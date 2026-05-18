@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="passenger_title">Seus dados</string>
+    <string name="passenger_subtitle">Passageiro %1$d de %2$d</string>
+    <string name="passenger_back">Voltar</string>
+    <string name="passenger_continue">Avançar</string>
+    <string name="passenger_continue_saving">Salvando…</string>
+    <string name="passenger_prev">Anterior</string>
+    <string name="passenger_next">Próximo</string>
+    <string name="passenger_form_header">PASSAGEIRO %1$d</string>
+    <string name="passenger_form_subtitle">Dados para emissão do bilhete.</string>
+    <string name="passenger_remove">remover</string>
+    <string name="passenger_field_doc_type">Tipo de documento</string>
+    <string name="passenger_field_cpf">CPF</string>
+    <string name="passenger_field_rg">RG</string>
+    <string name="passenger_field_document">Nº do documento</string>
+    <string name="passenger_field_name">Nome completo</string>
+    <string name="passenger_field_phone">Celular</string>
+    <string name="passenger_field_birthdate">Data de nascimento</string>
+    <string name="passenger_field_birthdate_placeholder">dd/mm/aaaa</string>
+    <string name="passenger_lookup_loading">Buscando passageiro…</string>
+    <string name="passenger_lookup_found">Dados carregados do CPF</string>
+    <string name="passenger_error_doc_required">Informe o documento</string>
+    <string name="passenger_error_doc_invalid">Documento inválido</string>
+    <string name="passenger_error_name_required">Informe o nome</string>
+    <string name="passenger_error_phone_required">Informe o celular</string>
+    <string name="passenger_error_phone_invalid">Celular inválido</string>
+    <string name="passenger_error_birthdate_required">Informe a data de nascimento</string>
+    <string name="passenger_error_birthdate_invalid">Data inválida</string>
+    <string name="passenger_error_generic">Falha ao salvar dados</string>
+    <string name="passenger_keypad_label">Toque para digitar</string>
+    <string name="passenger_keypad_done">Concluído</string>
+    <string name="passenger_keypad_delete">Apagar</string>
+    <string name="passenger_keypad_close">Fechar</string>
+    <string name="passenger_keypad_space">Espaço</string>
+    <string name="passenger_keypad_shift">Maiúsculas</string>
+    <string name="passenger_total_label">Total</string>
+</resources>

@@ -13,7 +13,7 @@ Estou desenvolvendo uma versão Android de um sistema web existente, adaptada pa
 Acesse e leia o arquivo de design disponível na seguinte URL:
 
 ```
-https://api.anthropic.com/v1/design/h/UB41zNdy6pnUTsMPB-UOxg?open_file=Ferry+Kiosk.html
+https://api.anthropic.com/v1/design/h/sa5xWdDbHX7KD3ozkpCIuQ?open_file=Ferry+Kiosk.html
 ```
 
 Utilize-o como **referência visual e de fluxo de telas**. Respeite:

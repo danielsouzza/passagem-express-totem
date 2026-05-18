@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="trip_title">Escolha sua viagem</string>
+    <string name="trip_subtitle_route">%1$s → %2$s</string>
+    <string name="trip_loading">Buscando viagens…</string>
+    <string name="trip_error_title">Falha ao buscar viagens</string>
+    <string name="trip_empty_title">Sem viagens nesta data</string>
+    <string name="trip_empty_message">Não há viagens disponíveis para a data selecionada.</string>
+    <string name="trip_next_available_title">Próxima viagem disponível</string>
+    <string name="trip_next_available_action">Ver na próxima data</string>
+    <string name="trip_retry">Tentar de novo</string>
+    <string name="trip_back">Voltar</string>
+    <string name="trip_continue">Continuar</string>
+    <string name="trip_minutes">min</string>
+    <string name="trip_seats_format">%1$d lugares</string>
+    <string name="trip_free_seating">Livre escolha</string>
+    <string name="trip_assigned_seating">Poltrona marcada</string>
+    <string name="trip_prev_date">Data anterior</string>
+    <string name="trip_next_date">Próxima data</string>
+    <string name="trip_label_departure">Saída</string>
+    <string name="trip_label_arrival">Chegada</string>
+    <string name="trip_label_duration">Duração</string>
+    <string name="trip_label_per_person">Por pessoa</string>
+    <string name="trip_label_pix">No pix</string>
+</resources>

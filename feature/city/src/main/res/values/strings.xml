@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="city_origem_title">De onde você embarca?</string>
+    <string name="city_origem_subtitle">Escolha o município de embarque</string>
+    <string name="city_destino_title">Para qual cidade você vai?</string>
+    <string name="city_destino_subtitle_format">Saindo de %1$s · escolha o destino</string>
+    <string name="city_destino_subtitle_porto_format">Embarcando em %1$s · escolha o destino</string>
+    <string name="city_loading">Buscando municípios…</string>
+    <string name="city_error_title">Falha ao carregar municípios</string>
+    <string name="city_empty_title">Nenhum município disponível</string>
+    <string name="city_empty_message">Não há municípios configurados para este porto no momento.</string>
+    <string name="city_empty_destinos_title">Nenhum destino a partir desta origem</string>
+    <string name="city_empty_destinos_message">Tente outro município de embarque.</string>
+    <string name="city_search_hint">Buscar município</string>
+    <string name="city_search_clear">Limpar busca</string>
+    <string name="city_search_empty">Nenhum município bate com a busca</string>
+    <string name="city_retry">Tentar de novo</string>
+    <string name="city_back">Voltar</string>
+    <string name="city_continue">Continuar</string>
+    <string name="city_keypad_done">Concluído</string>
+    <string name="city_keypad_close">Fechar</string>
+    <string name="city_keypad_delete">Apagar</string>
+    <string name="city_keypad_space">Espaço</string>
+    <string name="city_keypad_shift">Maiúsculas</string>
+</resources>

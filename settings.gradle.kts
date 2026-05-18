@@ -24,3 +24,17 @@ dependencyResolutionManagement {
 
 rootProject.name = "PassagenExpress"
 include(":app")
+include(":core:designsystem")
+include(":core:common")
+include(":core:domain")
+include(":core:datastore")
+include(":core:network")
+include(":core:data")
+include(":feature:setup")
+include(":feature:idle")
+include(":feature:city")
+include(":feature:date")
+include(":feature:trip")
+include(":feature:room")
+include(":feature:passenger")
+include(":feature:payment")

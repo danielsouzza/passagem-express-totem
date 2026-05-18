@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="date_title">Quando você embarca?</string>
+    <string name="date_subtitle">Escolha a data da viagem</string>
+    <string name="date_today">Hoje</string>
+    <string name="date_tomorrow">Amanhã</string>
+    <string name="date_back">Voltar</string>
+    <string name="date_continue">Continuar</string>
+    <string name="date_question">Quando você deseja viajar?</string>
+    <string name="date_subhead">Selecione a data de embarque para ver horários disponíveis.</string>
+    <string name="date_other_date">Outra Data</string>
+    <string name="date_prev_month">Mês anterior</string>
+    <string name="date_next_month">Próximo mês</string>
+</resources>

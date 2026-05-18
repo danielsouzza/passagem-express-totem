@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="room_title">Escolha seu cômodo</string>
+    <string name="room_subtitle_route">%1$s → %2$s</string>
+    <string name="room_loading">Carregando dados…</string>
+    <string name="room_error_title">Falha ao carregar cômodos</string>
+    <string name="room_retry">Tentar de novo</string>
+    <string name="room_back">Voltar</string>
+    <string name="room_continue">Avançar</string>
+    <string name="room_legend_free">Livre</string>
+    <string name="room_legend_selected">Selecionado</string>
+    <string name="room_legend_unavailable">Indisponível</string>
+    <string name="room_section_seats">Mapa de poltronas</string>
+    <string name="room_section_entry">Entrada</string>
+    <string name="room_section_cabins">Camarotes</string>
+    <string name="room_section_other">Outros tipos</string>
+    <string name="room_selected_title">Cômodos selecionados</string>
+    <string name="room_selected_empty">Nenhum cômodo selecionado, toque em um para continuar</string>
+    <string name="room_free_seating_title">Atenção: poltrona livre</string>
+    <string name="room_free_seating_message">Nesta viagem os assentos não são marcados. O passageiro escolhe qualquer poltrona disponível no embarque.</string>
+    <string name="room_quantity_available">%1$d disponíveis</string>
+    <string name="room_quantity_unavailable">Esgotado</string>
+    <string name="room_value_label">Valor</string>
+    <string name="room_value_pix">no PIX</string>
+    <string name="room_decrement">Diminuir</string>
+    <string name="room_increment">Aumentar</string>
+    <string name="room_remove">Remover</string>
+    <string name="room_starting_sale">Iniciando venda…</string>
+    <string name="room_seat_taken">Cômodo indisponível</string>
+</resources>

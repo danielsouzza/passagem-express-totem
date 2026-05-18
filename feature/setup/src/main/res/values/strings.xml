@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="setup_title">Configuração do totem</string>
+    <string name="setup_step_subdomain_title">1. Identificação da empresa</string>
+    <string name="setup_step_subdomain_subtitle">Informe o subdomínio que identifica este totem (opcional). Deixe em branco se o backend não usa multi-tenant.</string>
+    <string name="setup_subdomain_label">Subdomínio (opcional)</string>
+    <string name="setup_subdomain_hint">empresa-x</string>
+    <string name="setup_step_porto_title">2. Porto de operação</string>
+    <string name="setup_step_porto_subtitle">Escolha o porto onde este totem está instalado.</string>
+    <string name="setup_loading_portos">Carregando portos…</string>
+    <string name="setup_no_portos_title">Nenhum porto encontrado</string>
+    <string name="setup_no_portos_message">Tente novamente em alguns instantes ou verifique o subdomínio informado.</string>
+    <string name="setup_porto_search_hint">Buscar porto ou município</string>
+    <string name="setup_porto_search_empty">Nenhum porto bate com a busca</string>
+    <string name="setup_porto_clear_search">Limpar busca</string>
+    <string name="setup_step_language_title">3. Idioma padrão</string>
+    <string name="setup_step_language_subtitle">Define o idioma que aparece para o cliente quando ele toca para começar.</string>
+    <string name="setup_language_pt">Português (Brasil)</string>
+    <string name="setup_language_en">English</string>
+    <string name="setup_continue">Continuar</string>
+    <string name="setup_back">Voltar</string>
+    <string name="setup_finish">Concluir configuração</string>
+    <string name="setup_retry">Tentar de novo</string>
+    <string name="setup_load_error_title">Falha ao carregar portos</string>
+</resources>

@@ -11,9 +11,14 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.core.MutableTransitionState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -182,17 +187,46 @@ private fun DestinoPicker(
                         horizontalArrangement = Arrangement.spacedBy(TotemTheme.dimens.space16),
                         verticalArrangement = Arrangement.spacedBy(TotemTheme.dimens.space16),
                     ) {
-                        items(state.municipios, key = { it.slug }) { municipio ->
-                            CityCard(
-                                municipio = municipio,
-                                selected = selectedSlug == municipio.slug,
-                                onClick = { onItemSelected(municipio) },
-                            )
+                        itemsIndexed(
+                            items = state.municipios,
+                            key = { _, m -> m.slug },
+                        ) { index, municipio ->
+                            StaggeredItem(index = index) {
+                                CityCard(
+                                    municipio = municipio,
+                                    selected = selectedSlug == municipio.slug,
+                                    onClick = { onItemSelected(municipio) },
+                                )
+                            }
                         }
                     }
                 }
             }
         }
+    }
+}
+
+/**
+ * Wrapper que entra em cena com fade + slide-up, com delay escalonado pelo índice.
+ * Dá efeito de cascata nos cards quando a tela monta a primeira vez.
+ */
+@Composable
+private fun StaggeredItem(index: Int, content: @Composable () -> Unit) {
+    // `MutableTransitionState(false)` + alterar pra true após composição garante que
+    // a animação SEMPRE roda no primeiro draw. O Lazy* reusa composables ao scrollar,
+    // então essa key é por índice — itens novos animam, reciclados não.
+    val visibility = remember(index) {
+        MutableTransitionState(false).apply { targetState = true }
+    }
+    AnimatedVisibility(
+        visibleState = visibility,
+        enter = fadeIn(animationSpec = tween(durationMillis = 260, delayMillis = index * 35)) +
+            slideInVertically(
+                animationSpec = tween(durationMillis = 320, delayMillis = index * 35),
+                initialOffsetY = { it / 5 },
+            ),
+    ) {
+        content()
     }
 }
 

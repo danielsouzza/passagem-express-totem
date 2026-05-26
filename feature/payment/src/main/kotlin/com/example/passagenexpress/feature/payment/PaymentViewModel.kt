@@ -5,15 +5,15 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.passagenexpress.core.common.result.AppResult
 import com.example.passagenexpress.core.domain.model.ItemPedido
-import com.example.passagenexpress.core.domain.model.NovaPointTapIntent
+import com.example.passagenexpress.core.domain.model.NovaPointTapOrder
 import com.example.passagenexpress.core.domain.model.Pedido
 import com.example.passagenexpress.core.domain.model.PedidoStatus
 import com.example.passagenexpress.core.domain.model.PointTapPaymentType
 import com.example.passagenexpress.core.domain.model.PointTapStatus
 import com.example.passagenexpress.core.domain.repository.NovoPedido
-import com.example.passagenexpress.core.domain.usecase.CancelarPointTapIntentUseCase
+import com.example.passagenexpress.core.domain.usecase.CancelarPointTapOrderUseCase
 import com.example.passagenexpress.core.domain.usecase.CriarPedidoUseCase
-import com.example.passagenexpress.core.domain.usecase.CriarPointTapIntentUseCase
+import com.example.passagenexpress.core.domain.usecase.CriarPointTapOrderUseCase
 import com.example.passagenexpress.core.domain.usecase.GerarPagamentoPixUseCase
 import com.example.passagenexpress.core.domain.usecase.ObterPointTapStatusUseCase
 import com.example.passagenexpress.core.domain.usecase.ObterStatusPedidoUseCase
@@ -43,9 +43,9 @@ class PaymentViewModel @Inject constructor(
     private val criarPedido: CriarPedidoUseCase,
     private val gerarPagamentoPix: GerarPagamentoPixUseCase,
     private val obterStatusPedido: ObterStatusPedidoUseCase,
-    private val criarPointTapIntent: CriarPointTapIntentUseCase,
+    private val criarPointTapOrder: CriarPointTapOrderUseCase,
     private val obterPointTapStatus: ObterPointTapStatusUseCase,
-    private val cancelarPointTapIntent: CancelarPointTapIntentUseCase,
+    private val cancelarPointTapOrder: CancelarPointTapOrderUseCase,
 ) : ViewModel() {
 
     private val trecho = decodeTrechoArg(
@@ -157,25 +157,35 @@ class PaymentViewModel @Inject constructor(
         if (current is CardStage.Creating || current is CardStage.Waiting ||
             current is CardStage.Processing || current is CardStage.Success
         ) return
+        val options = _uiState.value.card.options
         _uiState.update {
-            it.copy(card = CardState(stage = CardStage.Creating, secondsRemaining = CARD_TIMEOUT_SECONDS))
+            it.copy(
+                card = it.card.copy(
+                    stage = CardStage.Creating,
+                    secondsRemaining = CARD_TIMEOUT_SECONDS,
+                ),
+            )
         }
         viewModelScope.launch {
-            val input = NovaPointTapIntent(
+            val input = NovaPointTapOrder(
                 pedidoId = pedido.id,
                 amountCents = (_uiState.value.total * 100).roundToLong(),
                 description = "Pedido #${pedido.id}",
-                installments = 1,
-                paymentType = PointTapPaymentType.CreditCard,
+                // Débito é sempre 1x; crédito usa o que o usuário escolheu.
+                installments = if (options.type == CardType.Credit) options.installments else 1,
+                paymentType = when (options.type) {
+                    CardType.Credit -> PointTapPaymentType.CreditCard
+                    CardType.Debit -> PointTapPaymentType.DebitCard
+                },
                 externalReference = pedido.id.toString(),
             )
-            when (val r = criarPointTapIntent(input)) {
+            when (val r = criarPointTapOrder(input)) {
                 is AppResult.Success -> {
                     _uiState.update {
                         it.copy(
                             card = it.card.copy(
                                 stage = mapCardStage(r.value.status),
-                                intentId = r.value.id,
+                                orderId = r.value.id,
                             ),
                         )
                     }
@@ -193,23 +203,42 @@ class PaymentViewModel @Inject constructor(
         }
     }
 
-    fun onCancelarCartao() {
-        val intentId = _uiState.value.card.intentId
-        cardPollingJob?.cancel()
-        cardTimerJob?.cancel()
+    fun onSelectCardType(type: CardType) {
         _uiState.update {
-            it.copy(card = it.card.copy(stage = CardStage.Canceled))
+            // Voltar pra débito reseta o parcelamento (débito não parcela).
+            val newInstallments = if (type == CardType.Debit) 1 else it.card.options.installments
+            it.copy(
+                card = it.card.copy(
+                    options = it.card.options.copy(type = type, installments = newInstallments),
+                ),
+            )
         }
-        if (intentId != null) fireAndForgetCancel(intentId)
     }
 
+    fun onSelectInstallments(installments: Int) {
+        if (installments < 1 || installments > MAX_INSTALLMENTS) return
+        _uiState.update {
+            it.copy(card = it.card.copy(options = it.card.options.copy(installments = installments)))
+        }
+    }
+
+    /**
+     * Reset do estado do cartão pro Idle (volta pro seletor). Usado pelo botão
+     * "Voltar" nos terminais retryable — nesses casos o intent já foi resolvido
+     * pelo backend (Canceled/Error/Timeout), então não precisamos disparar DELETE.
+     */
     fun onRetryCartao() {
         cardPollingJob?.cancel()
         cardTimerJob?.cancel()
         _uiState.update { it.copy(card = CardState()) }
     }
 
-    /** Cancela qualquer fluxo (PIX ou cartão) em andamento e volta pra tela do seletor. */
+    /**
+     * Cancela qualquer fluxo (PIX ou cartão) em andamento e volta pra tela do seletor.
+     * No cartão: captura o `orderId` ANTES de resetar e dispara o POST /cancel no backend
+     * fire-and-forget — caso contrário a maquininha fica com a order OPEN pendurada e
+     * a próxima criação retorna 409 ("queued order for the device").
+     */
     fun onCancelarPagamento() {
         when (_uiState.value.selectedMethod) {
             PaymentMethod.Pix -> {
@@ -223,7 +252,13 @@ class PaymentViewModel @Inject constructor(
                     )
                 }
             }
-            PaymentMethod.Card -> onRetryCartao()
+            PaymentMethod.Card -> {
+                val orderId = _uiState.value.card.orderId
+                cardPollingJob?.cancel()
+                cardTimerJob?.cancel()
+                _uiState.update { it.copy(card = CardState()) }
+                if (orderId != null) fireAndForgetCancel(orderId)
+            }
         }
     }
 
@@ -233,12 +268,12 @@ class PaymentViewModel @Inject constructor(
         pollingJob?.cancel()
         cardPollingJob?.cancel()
         cardTimerJob?.cancel()
-        // Se o usuário saiu da tela com intent ainda aberta, cancela do lado MP via backend.
+        // Se o usuário saiu da tela com order ainda aberta, cancela do lado MP via backend.
         val card = _uiState.value.card
         val stillOpen = card.stage is CardStage.Waiting ||
             card.stage is CardStage.Processing ||
             card.stage is CardStage.Creating
-        if (stillOpen) card.intentId?.let { fireAndForgetCancel(it) }
+        if (stillOpen) card.orderId?.let { fireAndForgetCancel(it) }
     }
 
     private fun startCriarPedido() {
@@ -303,13 +338,13 @@ class PaymentViewModel @Inject constructor(
      * antes de desistir; encerra ao atingir um status terminal ou ao ser cancelado pelo
      * timeout job.
      */
-    private fun startCardPolling(intentId: String) {
+    private fun startCardPolling(orderId: String) {
         cardPollingJob?.cancel()
         cardPollingJob = viewModelScope.launch {
             var consecutiveFailures = 0
             while (true) {
                 delay(CARD_POLLING_INTERVAL_MS)
-                when (val r = obterPointTapStatus(intentId)) {
+                when (val r = obterPointTapStatus(orderId)) {
                     is AppResult.Success -> {
                         consecutiveFailures = 0
                         val result = r.value
@@ -363,7 +398,7 @@ class PaymentViewModel @Inject constructor(
 
     /**
      * Tick por segundo no countdown do cartão; ao chegar a zero, cancela o polling,
-     * marca Timeout e dispara o DELETE no backend pra liberar a maquininha.
+     * marca Timeout e dispara o POST /cancel no backend pra liberar a maquininha.
      */
     private fun startCardTimer() {
         cardTimerJob?.cancel()
@@ -382,17 +417,17 @@ class PaymentViewModel @Inject constructor(
                 _uiState.value.card.stage.let { it !is CardStage.Success }
             ) {
                 cardPollingJob?.cancel()
-                val intentId = _uiState.value.card.intentId
+                val orderId = _uiState.value.card.orderId
                 _uiState.update { it.copy(card = it.card.copy(stage = CardStage.Timeout)) }
-                if (intentId != null) fireAndForgetCancel(intentId)
+                if (orderId != null) fireAndForgetCancel(orderId)
             }
         }
     }
 
-    private fun fireAndForgetCancel(intentId: String) {
+    private fun fireAndForgetCancel(orderId: String) {
         viewModelScope.launch {
             withContext(NonCancellable) {
-                cancelarPointTapIntent(intentId)
+                cancelarPointTapOrder(orderId)
             }
         }
     }
@@ -505,5 +540,6 @@ class PaymentViewModel @Inject constructor(
         private const val CARD_POLLING_INTERVAL_MS = 3_000L
         private const val CARD_TIMEOUT_SECONDS = 120
         private const val CARD_POLLING_MAX_FAILURES = 3
+        const val MAX_INSTALLMENTS = 12
     }
 }

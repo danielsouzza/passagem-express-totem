@@ -16,6 +16,13 @@
     <string name="payment_method_pix_hint">QR Code ou Copia e Cola</string>
     <string name="payment_method_card">Cartão</string>
     <string name="payment_method_card_hint">Maquininha ao lado do totem</string>
+    <string name="payment_card_type_section">Tipo de cartão</string>
+    <string name="payment_card_type_credit">Crédito</string>
+    <string name="payment_card_type_debit">Débito</string>
+    <string name="payment_card_installments_section">Parcelas</string>
+    <string name="payment_card_installments_chip">%1$dx</string>
+    <string name="payment_card_installments_preview">%1$dx de %2$s</string>
+    <string name="payment_card_installments_single">À vista</string>
     <string name="payment_method_section">Forma de pagamento</string>
     <string name="payment_contact_section">Dados do contato</string>
     <string name="payment_contact_name">Nome completo</string>

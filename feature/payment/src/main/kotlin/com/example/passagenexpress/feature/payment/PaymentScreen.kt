@@ -18,6 +18,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.Pix
 import androidx.compose.material3.Icon
@@ -97,6 +99,8 @@ fun PaymentScreen(
         onKeypadBackspace = viewModel::onContactKeypadBackspace,
         onGerarPix = viewModel::onGerarPix,
         onPagarComCartao = viewModel::onPagarComCartao,
+        onSelectCardType = viewModel::onSelectCardType,
+        onSelectInstallments = viewModel::onSelectInstallments,
         onBack = onBack,
     )
 }
@@ -124,6 +128,8 @@ private fun PaymentContent(
     onKeypadBackspace: () -> Unit,
     onGerarPix: () -> Unit,
     onPagarComCartao: () -> Unit,
+    onSelectCardType: (CardType) -> Unit,
+    onSelectInstallments: (Int) -> Unit,
     onBack: () -> Unit,
 ) {
     val trecho = state.trecho
@@ -206,7 +212,13 @@ private fun PaymentContent(
                             )
                         }
                     }
-                    PaymentMethod.Card -> CardSection(onPagarComCartao = onPagarComCartao)
+                    PaymentMethod.Card -> CardSection(
+                        options = state.card.options,
+                        total = state.total,
+                        onSelectCardType = onSelectCardType,
+                        onSelectInstallments = onSelectInstallments,
+                        onPagarComCartao = onPagarComCartao,
+                    )
                 }
                 Spacer(Modifier.height(TotemTheme.dimens.space24))
             }
@@ -403,7 +415,13 @@ private fun PixSection(
 }
 
 @Composable
-private fun CardSection(onPagarComCartao: () -> Unit) {
+private fun CardSection(
+    options: CardOptions,
+    total: Double,
+    onSelectCardType: (CardType) -> Unit,
+    onSelectInstallments: (Int) -> Unit,
+    onPagarComCartao: () -> Unit,
+) {
     Surface(
         shape = RoundedCornerShape(TotemTheme.dimens.radiusXl),
         color = TotemPalette.Paper,
@@ -412,14 +430,202 @@ private fun CardSection(onPagarComCartao: () -> Unit) {
     ) {
         Column(
             modifier = Modifier.padding(TotemTheme.dimens.space28),
-            verticalArrangement = Arrangement.spacedBy(TotemTheme.dimens.space16),
+            verticalArrangement = Arrangement.spacedBy(TotemTheme.dimens.space20),
         ) {
             CardHeader()
+            CardTypeSelector(selected = options.type, onSelect = onSelectCardType)
+            if (options.type == CardType.Credit) {
+                InstallmentsSelector(
+                    selected = options.installments,
+                    total = total,
+                    onSelect = onSelectInstallments,
+                )
+            }
             TotemPrimaryButton(
                 text = stringRes(R.string.payment_card_pay),
                 onClick = onPagarComCartao,
                 accent = true,
                 modifier = Modifier.fillMaxWidth(),
+            )
+        }
+    }
+}
+
+@Composable
+private fun CardTypeSelector(selected: CardType, onSelect: (CardType) -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(TotemTheme.dimens.space12)) {
+        Text(
+            text = stringRes(R.string.payment_card_type_section).uppercase(),
+            style = MaterialTheme.typography.labelMedium.copy(
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 1.5.sp,
+            ),
+            color = TotemPalette.InkMuted,
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(TotemTheme.dimens.space12)) {
+            OptionPill(
+                modifier = Modifier.weight(1f),
+                label = stringRes(R.string.payment_card_type_credit),
+                selected = selected == CardType.Credit,
+                onClick = { onSelect(CardType.Credit) },
+            )
+            OptionPill(
+                modifier = Modifier.weight(1f),
+                label = stringRes(R.string.payment_card_type_debit),
+                selected = selected == CardType.Debit,
+                onClick = { onSelect(CardType.Debit) },
+            )
+        }
+    }
+}
+
+@Composable
+private fun InstallmentsSelector(
+    selected: Int,
+    total: Double,
+    onSelect: (Int) -> Unit,
+) {
+    val max = PaymentViewModel.MAX_INSTALLMENTS
+    val canPrev = selected > 1
+    val canNext = selected < max
+    val perInstallment = total / selected
+
+    Column(verticalArrangement = Arrangement.spacedBy(TotemTheme.dimens.space12)) {
+        Text(
+            text = stringRes(R.string.payment_card_installments_section).uppercase(),
+            style = MaterialTheme.typography.labelMedium.copy(
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 1.5.sp,
+            ),
+            color = TotemPalette.InkMuted,
+        )
+        // Stepper: [←] valor central [→]. Decrementa/incrementa entre 1..MAX, sem ciclar
+        // (não faz sentido ir de 1x pra 12x num toque acidental).
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(TotemTheme.dimens.space12),
+        ) {
+            StepperArrow(
+                direction = ArrowDirection.Left,
+                enabled = canPrev,
+                onClick = { if (canPrev) onSelect(selected - 1) },
+            )
+            InstallmentsValue(
+                installments = selected,
+                perInstallment = perInstallment,
+                total = total,
+                modifier = Modifier.weight(1f),
+            )
+            StepperArrow(
+                direction = ArrowDirection.Right,
+                enabled = canNext,
+                onClick = { if (canNext) onSelect(selected + 1) },
+            )
+        }
+    }
+}
+
+private enum class ArrowDirection { Left, Right }
+
+@Composable
+private fun StepperArrow(direction: ArrowDirection, enabled: Boolean, onClick: () -> Unit) {
+    // Visual neutro: sem cor de "selecionado". Apenas borda fina e ícone em Ink quando
+    // pode ser tocado, opacificado quando no limite (1× ou 12×).
+    val tint = if (enabled) TotemPalette.Ink else TotemPalette.InkSoft
+    Surface(
+        modifier = Modifier
+            .size(TotemTheme.dimens.touchTarget)
+            .clickable(enabled = enabled, onClick = onClick),
+        shape = RoundedCornerShape(TotemTheme.dimens.radius),
+        color = TotemPalette.Paper,
+        border = androidx.compose.foundation.BorderStroke(1.5.dp, TotemPalette.Hairline),
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Icon(
+                imageVector = when (direction) {
+                    ArrowDirection.Left -> Icons.AutoMirrored.Filled.ArrowBack
+                    ArrowDirection.Right -> Icons.AutoMirrored.Filled.ArrowForward
+                },
+                contentDescription = null,
+                tint = tint,
+                modifier = Modifier.size(24.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun InstallmentsValue(
+    installments: Int,
+    perInstallment: Double,
+    total: Double,
+    modifier: Modifier = Modifier,
+) {
+    // Valor central sem container — só texto centralizado. Quantidade de parcelas em
+    // titleLarge (vs headlineMedium antes) e a moeda como sub-info; mais clean.
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(TotemTheme.dimens.space4),
+    ) {
+        Text(
+            text = if (installments == 1) {
+                stringRes(R.string.payment_card_installments_single)
+            } else {
+                stringResFmt(R.string.payment_card_installments_chip, installments)
+            },
+            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold),
+            color = TotemPalette.Ink,
+        )
+        Text(
+            text = if (installments == 1) {
+                formatMoney(total)
+            } else {
+                stringResFmt(
+                    R.string.payment_card_installments_preview,
+                    installments,
+                    formatMoney(perInstallment),
+                )
+            },
+            style = MaterialTheme.typography.bodyMedium,
+            color = TotemPalette.InkMuted,
+        )
+    }
+}
+
+@Composable
+private fun OptionPill(
+    modifier: Modifier = Modifier,
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    val borderColor = if (selected) TotemPalette.Accent else TotemPalette.Hairline
+    val bgColor = if (selected) TotemPalette.AccentTint else TotemPalette.Paper
+    val textColor = if (selected) TotemPalette.Accent else TotemPalette.Ink
+    Surface(
+        modifier = modifier
+            .heightIn(min = TotemTheme.dimens.touchTarget)
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(TotemTheme.dimens.radiusSm),
+        color = bgColor,
+        border = androidx.compose.foundation.BorderStroke(
+            if (selected) 2.dp else 1.5.dp,
+            borderColor,
+        ),
+    ) {
+        Box(
+            modifier = Modifier.padding(
+                horizontal = TotemTheme.dimens.space16,
+                vertical = TotemTheme.dimens.space12,
+            ),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                color = textColor,
             )
         }
     }

@@ -26,7 +26,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Error
-import androidx.compose.material.icons.filled.PointOfSale
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.TimerOff
 import androidx.compose.material3.CircularProgressIndicator
@@ -47,8 +46,14 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.airbnb.lottie.compose.LottieAnimation
+import com.airbnb.lottie.compose.LottieCompositionSpec
+import com.airbnb.lottie.compose.LottieConstants
+import com.airbnb.lottie.compose.animateLottieCompositionAsState
+import com.airbnb.lottie.compose.rememberLottieComposition
 import com.example.passagenexpress.core.designsystem.component.TotemPrimaryButton
 import com.example.passagenexpress.core.designsystem.component.TotemSecondaryButton
 import com.example.passagenexpress.core.designsystem.theme.TotemPalette
@@ -134,7 +139,7 @@ internal fun PaymentWaitingScreen(
                 // Logo abaixo do centro: valor destacado OU countdown de auto-return.
                 if (isSuccess && autoReturnSeconds != null) {
                     AutoReturnLabel(seconds = autoReturnSeconds)
-                } else if (!isTerminal || phase is WaitingPhase.Terminal && !phase.isSuccess) {
+                } else if (!isSuccess) {
                     AmountBlock(totalMoney = totalMoney)
                 }
 
@@ -177,12 +182,24 @@ private fun ActionButton(
             accent = true,
             modifier = Modifier.fillMaxWidth(),
         )
-        phase is WaitingPhase.Terminal && phase.retryable -> TotemPrimaryButton(
-            text = stringRes(R.string.payment_waiting_retry),
-            onClick = if (mode == PaymentMethod.Pix) onRetryPix else onRetryCard,
-            accent = true,
+        // Terminal retryable (Failed/Canceled/Timeout/Expired) — duas opções: tentar
+        // novamente o mesmo método OU voltar pro seletor pra escolher outro.
+        phase is WaitingPhase.Terminal && phase.retryable -> Row(
             modifier = Modifier.fillMaxWidth(),
-        )
+            horizontalArrangement = Arrangement.spacedBy(TotemTheme.dimens.space12),
+        ) {
+            TotemSecondaryButton(
+                text = stringRes(R.string.payment_waiting_back_to_methods),
+                onClick = onCancel,
+                modifier = Modifier.weight(1f),
+            )
+            TotemPrimaryButton(
+                text = stringRes(R.string.payment_waiting_retry),
+                onClick = if (mode == PaymentMethod.Pix) onRetryPix else onRetryCard,
+                accent = true,
+                modifier = Modifier.weight(1f),
+            )
+        }
         phase is WaitingPhase.Terminal -> TotemSecondaryButton(
             text = stringRes(R.string.payment_waiting_back_to_methods),
             onClick = onCancel,
@@ -317,7 +334,7 @@ private fun CenterContent(
     ) {
         when (phase) {
             is WaitingPhase.Terminal -> TerminalCenter(phase)
-            WaitingPhase.Preparing -> PreparingCenter(mode)
+            WaitingPhase.Preparing -> PreparingCenter()
             WaitingPhase.Processing -> ProcessingCenter()
             is WaitingPhase.Active -> when (mode) {
                 PaymentMethod.Pix -> PixCenter(content = pixCopiaCola.orEmpty())
@@ -355,11 +372,11 @@ private fun PixCenter(content: String) {
 
 @Composable
 private fun CardCenter() {
-    PulsingIconTile(icon = Icons.Filled.PointOfSale)
+    LottieTile(rawRes = R.raw.payment_waiting_card)
 }
 
 @Composable
-private fun PreparingCenter(mode: PaymentMethod) {
+private fun PreparingCenter() {
     Box(
         modifier = Modifier.size(280.dp),
         contentAlignment = Alignment.Center,
@@ -374,7 +391,7 @@ private fun PreparingCenter(mode: PaymentMethod) {
 
 @Composable
 private fun ProcessingCenter() {
-    PulsingIconTile(icon = Icons.Filled.PointOfSale, showSpinner = true)
+    LottieTile(rawRes = R.raw.payment_waiting_card, showSpinner = true)
 }
 
 @Composable
@@ -388,9 +405,10 @@ private fun TerminalCenter(phase: WaitingPhase.Terminal) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(TotemTheme.dimens.space20),
     ) {
-        // Halo + ícone — no sucesso o halo pulsa de leve pra dar vida.
+        // Sucesso: Lottie de pagamento aprovado (halo + circle + check). Outros terminais
+        // mantêm o ícone estático com fundo tonal.
         if (phase.isSuccess) {
-            SuccessIcon(bg = bg, tint = phase.tint, icon = phase.icon)
+            ApprovedLottie()
         } else {
             Box(
                 modifier = Modifier
@@ -409,74 +427,36 @@ private fun TerminalCenter(phase: WaitingPhase.Terminal) {
         Text(
             text = phase.title,
             style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.ExtraBold),
-            color = if (phase.isSuccess) TotemPalette.Success else TotemPalette.Ink,
+            // Lottie de sucesso usa azul como cor principal — título acompanha.
+            color = if (phase.isSuccess) TotemPalette.Accent else TotemPalette.Ink,
             textAlign = TextAlign.Center,
         )
     }
 }
 
+/**
+ * Tile padronizado pro centro do waiting de cartão: Lottie em loop infinito dentro de
+ * um container `AccentTint`. Os JSONs em `res/raw/` são placeholders — pra trocar
+ * por animações finais, basta substituir os arquivos mantendo o mesmo nome.
+ */
 @Composable
-private fun SuccessIcon(bg: Color, tint: Color, icon: ImageVector) {
-    val transition = rememberInfiniteTransition(label = "success-halo")
-    val pulse by transition.animateFloat(
-        initialValue = 1f,
-        targetValue = 1.08f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1300, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse,
-        ),
-        label = "halo-pulse",
-    )
-    Box(contentAlignment = Alignment.Center, modifier = Modifier.size(280.dp)) {
-        Box(
-            modifier = Modifier
-                .size(240.dp)
-                .graphicsLayer(scaleX = pulse, scaleY = pulse, alpha = 0.5f)
-                .background(bg, CircleShape),
-        )
-        Box(
-            modifier = Modifier
-                .size(200.dp)
-                .background(bg, RoundedCornerShape(TotemTheme.dimens.radiusLg)),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = tint,
-                modifier = Modifier.size(128.dp),
-            )
-        }
-    }
-}
-
-@Composable
-private fun PulsingIconTile(
-    icon: ImageVector,
+private fun LottieTile(
+    rawRes: Int,
     showSpinner: Boolean = false,
 ) {
-    val transition = rememberInfiniteTransition(label = "pulse")
-    val scale by transition.animateFloat(
-        initialValue = 0.94f,
-        targetValue = 1.06f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1400, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse,
-        ),
-        label = "scale",
+    val composition by rememberLottieComposition(LottieCompositionSpec.RawRes(rawRes))
+    val progress by animateLottieCompositionAsState(
+        composition = composition,
+        iterations = LottieConstants.IterateForever,
     )
     Box(
-        modifier = Modifier
-            .size(320.dp)
-            .graphicsLayer(scaleX = scale, scaleY = scale)
-            .background(TotemPalette.AccentTint, RoundedCornerShape(TotemTheme.dimens.radiusXl)),
+        modifier = Modifier.size(320.dp),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = TotemPalette.Accent,
-            modifier = Modifier.size(180.dp),
+        LottieAnimation(
+            composition = composition,
+            progress = { progress },
+            modifier = Modifier.size(240.dp),
         )
         if (showSpinner) {
             CircularProgressIndicator(
@@ -486,6 +466,23 @@ private fun PulsingIconTile(
             )
         }
     }
+}
+
+/** Lottie de pagamento aprovado — toca uma vez (halo + circle + check + estrelas). */
+@Composable
+private fun ApprovedLottie() {
+    val composition by rememberLottieComposition(
+        LottieCompositionSpec.RawRes(R.raw.payment_approved)
+    )
+    val progress by animateLottieCompositionAsState(
+        composition = composition,
+        iterations = 1,
+    )
+    LottieAnimation(
+        composition = composition,
+        progress = { progress },
+        modifier = Modifier.size(440.dp),
+    )
 }
 
 @Composable
@@ -686,3 +683,39 @@ private fun stringRes(id: Int): String = androidx.compose.ui.res.stringResource(
 @Composable
 private fun stringResFmt(id: Int, vararg args: Any): String =
     androidx.compose.ui.res.stringResource(id, *args)
+
+/**
+ * Preview do estado terminal de sucesso — Lottie de pagamento aprovado + título azul +
+ * countdown de auto-return. Renderiza só a parte visual do centro (Lottie + frase) num
+ * fundo `Paper` pra mostrar o resultado final no Android Studio.
+ */
+@Preview(name = "Approved (success terminal)", widthDp = 800, heightDp = 720, showBackground = true)
+@Composable
+private fun ApprovedSuccessPreview() {
+    com.example.passagenexpress.core.designsystem.theme.TotemTheme {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(TotemPalette.Paper),
+            contentAlignment = Alignment.Center,
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(TotemTheme.dimens.space20),
+            ) {
+                ApprovedLottie()
+                Text(
+                    text = "Pagamento aprovado!",
+                    style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.ExtraBold),
+                    color = TotemPalette.Accent,
+                    textAlign = TextAlign.Center,
+                )
+                Text(
+                    text = "Voltando em 5s…",
+                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Medium),
+                    color = TotemPalette.InkMuted,
+                )
+            }
+        }
+    }
+}

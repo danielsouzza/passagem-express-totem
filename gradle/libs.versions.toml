@@ -28,6 +28,7 @@ junitVersion = "1.2.1"
 espressoCore = "3.6.1"
 
 zxing = "3.5.3"
+lottieCompose = "6.0.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -66,6 +67,7 @@ okhttp-logging = { group = "com.squareup.okhttp3", name = "logging-interceptor",
 javax-inject = { group = "javax.inject", name = "javax.inject", version.ref = "javaxInject" }
 
 zxing-core = { group = "com.google.zxing", name = "core", version.ref = "zxing" }
+lottie-compose = { group = "com.airbnb.android", name = "lottie-compose", version.ref = "lottieCompose" }
 
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }

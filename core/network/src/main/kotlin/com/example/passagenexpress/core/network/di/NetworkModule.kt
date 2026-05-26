@@ -32,6 +32,11 @@ object NetworkModule {
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(20, TimeUnit.SECONDS)
             .writeTimeout(20, TimeUnit.SECONDS)
+            // Não seguir redirects automaticamente — a spec HTTP converte POST→GET em
+            // 301/302/303, o que mascara o problema real. Com isso desligado, qualquer
+            // 30x aparece como response e podemos ver pra onde o backend tava mandando.
+            .followRedirects(false)
+            .followSslRedirects(false)
             .addInterceptor(authInterceptor)
 
         if (BuildConfig.ENABLE_HTTP_LOGGING) {

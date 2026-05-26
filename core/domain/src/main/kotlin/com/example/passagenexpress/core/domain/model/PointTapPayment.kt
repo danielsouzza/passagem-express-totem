@@ -1,17 +1,17 @@
 package com.example.passagenexpress.core.domain.model
 
 /**
- * Payment intent do Mercado Pago Point Tap. O app cria via backend próprio
+ * Order do Mercado Pago Point Tap (API nova). O app cria via backend próprio
  * (`POST /api/payments`) e faz polling em `/api/payments/{id}/status` até receber
- * um status terminal.
+ * um status terminal. IDs têm formato `ORD…` e são tratados como string opaca.
  */
-data class PointTapIntent(
+data class PointTapOrder(
     val id: String,
     val status: PointTapStatus,
 )
 
 /**
- * Status do pagamento na maquininha. `Open` é o estado inicial (intent criada,
+ * Status do pagamento na maquininha. `Open` é o estado inicial (order criada,
  * aguardando aproximação do cartão); `Processing` aparece quando o cartão foi
  * lido e o gateway processa; os demais são terminais.
  */
@@ -34,8 +34,8 @@ data class PointTapPaymentResult(
     val amountCents: Long?,
 )
 
-/** Input para criar a intent — `amount` em centavos, sem decimal. */
-data class NovaPointTapIntent(
+/** Input para criar a order — `amount` em centavos, sem decimal. */
+data class NovaPointTapOrder(
     val pedidoId: Long,
     val amountCents: Long,
     val description: String,

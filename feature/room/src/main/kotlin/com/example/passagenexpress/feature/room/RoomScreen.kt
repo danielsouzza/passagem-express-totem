@@ -24,14 +24,20 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AirlineSeatReclineNormal
+import androidx.compose.material.icons.filled.Anchor
 import androidx.compose.material.icons.filled.Bed
+import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DirectionsBoat
+import androidx.compose.material.icons.filled.DirectionsBoatFilled
 import androidx.compose.material.icons.filled.KingBed
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material.icons.filled.Sailing
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Waves
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -61,6 +67,9 @@ import com.example.passagenexpress.core.designsystem.theme.TotemTheme
 import com.example.passagenexpress.core.domain.model.Comodo
 import com.example.passagenexpress.core.domain.model.Trecho
 import com.example.passagenexpress.core.domain.repository.InicioVenda
+import java.time.LocalDate
+import java.time.LocalTime
+import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 @Composable
@@ -105,16 +114,12 @@ private fun RoomContent(
     onDismissError: () -> Unit,
 ) {
     val trecho = state.trecho
-    val subtitle = if (trecho != null) {
-        stringResFmt(R.string.room_subtitle_route, trecho.municipioOrigem.nome, trecho.municipioDestino.nome)
-    } else null
 
     val canContinue = trecho != null && !state.selecionados.isEmpty() && !state.startingSale
 
     TotemScreenScaffold(
         step = 4,
         title = stringRes(R.string.room_title),
-        subtitle = subtitle,
         footer = {
             TotemSecondaryButton(text = stringRes(R.string.room_back), onClick = onBack)
             Spacer(Modifier.width(TotemTheme.dimens.space12))
@@ -143,6 +148,7 @@ private fun RoomContent(
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(TotemTheme.dimens.space16),
             ) {
+                TripInfoBanner(trecho = trecho)
                 if (state.content is RoomContentState.Poltronas) {
                     Legend()
                 }
@@ -841,8 +847,189 @@ private fun formatMoney(value: Double): String {
 }
 
 @Composable
-private fun stringRes(id: Int): String = androidx.compose.ui.res.stringResource(id)
+private fun TripInfoBanner(trecho: Trecho) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = TotemPalette.Paper,
+        shape = RoundedCornerShape(TotemTheme.dimens.radiusLg),
+        border = BorderStroke(1.5.dp, TotemPalette.Hairline),
+    ) {
+        Column(
+            modifier = Modifier.padding(
+                horizontal = TotemTheme.dimens.space20,
+                vertical = TotemTheme.dimens.space16,
+            ),
+            verticalArrangement = Arrangement.spacedBy(TotemTheme.dimens.space16),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(TotemTheme.dimens.space16),
+            ) {
+                VesselChip(embarcacao = trecho.embarcacao)
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(2.dp),
+                ) {
+                    Text(
+                        text = trecho.embarcacao.ifEmpty { "EMBARCAÇÃO" },
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            fontWeight = FontWeight.SemiBold,
+                            letterSpacing = (-0.2).sp,
+                        ),
+                        color = TotemPalette.Ink,
+                        maxLines = 1,
+                    )
+                    Text(
+                        text = vesselLabel(trecho.embarcacao),
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.5.sp,
+                        ),
+                        color = TotemPalette.InkMuted,
+                    )
+                }
+            }
+            RouteRow(
+                origem = trecho.municipioOrigem.nome,
+                destino = trecho.municipioDestino.nome,
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(TotemTheme.dimens.space12),
+            ) {
+                InfoPill(
+                    icon = Icons.Filled.CalendarToday,
+                    label = formatBannerDate(trecho.dataEmbarque),
+                    modifier = Modifier.weight(1f),
+                )
+                InfoPill(
+                    icon = Icons.Filled.Schedule,
+                    label = formatBannerTime(trecho.horario),
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        }
+    }
+}
 
 @Composable
-private fun stringResFmt(id: Int, vararg args: Any): String =
-    androidx.compose.ui.res.stringResource(id, *args)
+private fun VesselChip(embarcacao: String) {
+    Surface(
+        color = TotemPalette.AccentTint,
+        contentColor = TotemPalette.Accent,
+        shape = RoundedCornerShape(TotemTheme.dimens.radiusSm),
+        modifier = Modifier.size(56.dp),
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Icon(
+                imageVector = vesselIcon(embarcacao),
+                contentDescription = null,
+                modifier = Modifier.size(28.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun RouteRow(origem: String, destino: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(TotemTheme.dimens.space12),
+    ) {
+        Text(
+            text = origem.uppercase(),
+            style = MaterialTheme.typography.titleMedium.copy(
+                fontWeight = FontWeight.ExtraBold,
+                letterSpacing = 0.4.sp,
+            ),
+            color = TotemPalette.Ink,
+            modifier = Modifier.weight(1f),
+            textAlign = TextAlign.End,
+            maxLines = 1,
+        )
+        Icon(
+            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+            contentDescription = null,
+            tint = TotemPalette.Accent,
+            modifier = Modifier.size(22.dp),
+        )
+        Text(
+            text = destino.uppercase(),
+            style = MaterialTheme.typography.titleMedium.copy(
+                fontWeight = FontWeight.ExtraBold,
+                letterSpacing = 0.4.sp,
+            ),
+            color = TotemPalette.Ink,
+            modifier = Modifier.weight(1f),
+            textAlign = TextAlign.Start,
+            maxLines = 1,
+        )
+    }
+}
+
+@Composable
+private fun InfoPill(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        color = TotemPalette.AccentTint,
+        shape = RoundedCornerShape(TotemTheme.dimens.radiusPill),
+        modifier = modifier,
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = TotemPalette.Accent,
+                modifier = Modifier.size(18.dp),
+            )
+            Text(
+                text = label,
+                style = MaterialTheme.typography.titleSmall.copy(
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 0.2.sp,
+                ),
+                color = TotemPalette.Ink,
+                maxLines = 1,
+            )
+        }
+    }
+}
+
+private fun vesselIcon(embarcacao: String): androidx.compose.ui.graphics.vector.ImageVector {
+    val lower = embarcacao.lowercase()
+    return when {
+        "lancha" in lower -> Icons.Filled.Sailing
+        "catamarã" in lower || "catamaran" in lower -> Icons.Filled.DirectionsBoatFilled
+        "navio" in lower -> Icons.Filled.Anchor
+        else -> Icons.Filled.DirectionsBoat
+    }
+}
+
+private fun vesselLabel(embarcacao: String): String {
+    val lower = embarcacao.lowercase()
+    return when {
+        "lancha" in lower -> "LANCHA"
+        "catamarã" in lower || "catamaran" in lower -> "CATAMARÃ"
+        "navio" in lower -> "NAVIO"
+        else -> "FERRYBOAT"
+    }
+}
+
+private fun formatBannerDate(date: LocalDate): String =
+    date.format(DateTimeFormatter.ofPattern("EEE, dd 'de' MMM", Locale.forLanguageTag("pt-BR")))
+        .replaceFirstChar { it.titlecase(Locale.forLanguageTag("pt-BR")) }
+
+private fun formatBannerTime(time: LocalTime): String =
+    time.format(DateTimeFormatter.ofPattern("HH:mm"))
+
+@Composable
+private fun stringRes(id: Int): String = androidx.compose.ui.res.stringResource(id)

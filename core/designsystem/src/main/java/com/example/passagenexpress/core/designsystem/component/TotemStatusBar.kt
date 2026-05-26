@@ -14,8 +14,11 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.FilterAlt
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -44,6 +47,8 @@ data class TotemStatusBarState(
     val onLanguageChange: (TotemLanguageOption) -> Unit,
     val currentStep: Int? = null,
     val totalSteps: Int = 6,
+    val onHomeClick: (() -> Unit)? = null,
+    val onFilterClick: (() -> Unit)? = null,
 )
 
 val LocalTotemStatusBar = staticCompositionLocalOf<TotemStatusBarState?> { null }
@@ -69,9 +74,52 @@ fun TotemStatusBar(state: TotemStatusBarState, modifier: Modifier = Modifier) {
             } else {
                 LocationPill(portoNome = state.portoNome, time = state.time)
             }
-            LanguageToggle(
-                language = state.language,
-                onLanguageChange = state.onLanguageChange,
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(TotemTheme.dimens.space8),
+            ) {
+                if (state.onHomeClick != null) {
+                    CircleActionButton(
+                        icon = Icons.Filled.Home,
+                        description = "Início",
+                        onClick = state.onHomeClick,
+                    )
+                }
+                if (state.onFilterClick != null) {
+                    CircleActionButton(
+                        icon = Icons.Filled.FilterAlt,
+                        description = "Filtros",
+                        onClick = state.onFilterClick,
+                    )
+                }
+                LanguageToggle(
+                    language = state.language,
+                    onLanguageChange = state.onLanguageChange,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun CircleActionButton(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    description: String,
+    onClick: () -> Unit,
+) {
+    Surface(
+        color = TotemPalette.AccentTint,
+        shape = CircleShape,
+        modifier = Modifier
+            .size(TotemTheme.dimens.pillHeight)
+            .clip(CircleShape),
+    ) {
+        IconButton(onClick = onClick) {
+            Icon(
+                imageVector = icon,
+                contentDescription = description,
+                tint = TotemPalette.Ink,
+                modifier = Modifier.size(22.dp),
             )
         }
     }

@@ -17,10 +17,13 @@ android {
         minSdk = 30
         consumerProguardFiles("consumer-rules.pro")
 
+        // HTTPS direto — o servidor responde 301 quando bate em HTTP, e o follow
+        // do OkHttp convertia POST→GET, descartando o body. Cortando a etapa pra evitar.
         buildConfigField(
             "String",
             "API_BASE_URL",
             "\"http://172.30.237.224/\""
+//            "\"https://app.homologacao.techrios.online/\""
         )
         buildConfigField(
             "String",

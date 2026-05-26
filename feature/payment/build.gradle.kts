@@ -48,6 +48,7 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
 
     implementation(libs.zxing.core)
+    implementation(libs.lottie.compose)
 
     implementation(libs.hilt.android)
     implementation(libs.hilt.navigation.compose)

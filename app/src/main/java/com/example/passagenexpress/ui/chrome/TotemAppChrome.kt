@@ -24,6 +24,7 @@ private val TimeFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:m
 @Composable
 fun TotemAppChrome(
     viewModel: TotemAppChromeViewModel = hiltViewModel(),
+    onHomeClick: (() -> Unit)? = null,
     content: @Composable () -> Unit,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -36,6 +37,7 @@ fun TotemAppChrome(
         time = time,
         language = state.language.toOption(),
         onLanguageChange = { option -> viewModel.onLanguageChange(option.toDomain()) },
+        onHomeClick = onHomeClick,
     )
 
     CompositionLocalProvider(LocalTotemStatusBar provides statusBar) {

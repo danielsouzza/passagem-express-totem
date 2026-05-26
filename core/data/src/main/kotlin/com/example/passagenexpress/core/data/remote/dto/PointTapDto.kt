@@ -1,7 +1,7 @@
 package com.example.passagenexpress.core.data.remote.dto
 
-import com.example.passagenexpress.core.domain.model.NovaPointTapIntent
-import com.example.passagenexpress.core.domain.model.PointTapIntent
+import com.example.passagenexpress.core.domain.model.NovaPointTapOrder
+import com.example.passagenexpress.core.domain.model.PointTapOrder
 import com.example.passagenexpress.core.domain.model.PointTapPaymentResult
 import com.example.passagenexpress.core.domain.model.PointTapPaymentType
 import com.example.passagenexpress.core.domain.model.PointTapStatus
@@ -14,7 +14,7 @@ import kotlinx.serialization.Serializable
  * é repassado pro Mercado Pago e é uma string opaca.
  */
 @Serializable
-data class PointTapIntentRequestDto(
+data class PointTapOrderRequestDto(
     @SerialName("pedido_id") val pedidoId: Long,
     val amount: Long,
     val description: String,
@@ -23,9 +23,13 @@ data class PointTapIntentRequestDto(
     @SerialName("external_reference") val externalReference: String,
 )
 
+/**
+ * Resposta do `POST /api/payments` na nova API de orders. `order_id` tem formato
+ * `ORD…` (string opaca de tamanho variável). O app trata como id qualquer.
+ */
 @Serializable
-data class PointTapIntentResponseDto(
-    @SerialName("payment_intent_id") val paymentIntentId: String? = null,
+data class PointTapOrderResponseDto(
+    @SerialName("order_id") val orderId: String? = null,
     val id: String? = null,
     val status: String? = null,
 )
@@ -43,7 +47,7 @@ fun PointTapPaymentType.toApiValue(): String = when (this) {
     PointTapPaymentType.DebitCard -> "debit_card"
 }
 
-fun NovaPointTapIntent.toDto(): PointTapIntentRequestDto = PointTapIntentRequestDto(
+fun NovaPointTapOrder.toDto(): PointTapOrderRequestDto = PointTapOrderRequestDto(
     pedidoId = pedidoId,
     amount = amountCents,
     description = description,
@@ -52,9 +56,9 @@ fun NovaPointTapIntent.toDto(): PointTapIntentRequestDto = PointTapIntentRequest
     externalReference = externalReference,
 )
 
-fun PointTapIntentResponseDto.toDomain(): PointTapIntent? {
-    val id = paymentIntentId ?: id ?: return null
-    return PointTapIntent(
+fun PointTapOrderResponseDto.toDomain(): PointTapOrder? {
+    val id = orderId ?: id ?: return null
+    return PointTapOrder(
         id = id,
         status = parsePointTapStatus(status),
     )

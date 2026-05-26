@@ -1,5 +1,7 @@
 package com.example.passagenexpress.ui.navigation
 
+import androidx.compose.animation.AnimatedContentTransitionScope.SlideDirection
+import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
@@ -31,6 +33,12 @@ fun TotemNavHost(
         navController = navController,
         startDestination = startDestination,
         modifier = modifier,
+        // Avançar = nova tela vem da direita, antiga sai pela esquerda.
+        // Voltar  = tela anterior volta pela esquerda, atual sai pela direita.
+        enterTransition = { slideIntoContainer(SlideDirection.Left, tween(NAV_TRANSITION_MS)) },
+        exitTransition = { slideOutOfContainer(SlideDirection.Left, tween(NAV_TRANSITION_MS)) },
+        popEnterTransition = { slideIntoContainer(SlideDirection.Right, tween(NAV_TRANSITION_MS)) },
+        popExitTransition = { slideOutOfContainer(SlideDirection.Right, tween(NAV_TRANSITION_MS)) },
     ) {
         setupScreen(
             onSetupCompleted = {
@@ -120,3 +128,6 @@ fun TotemNavHost(
         )
     }
 }
+
+private const val NAV_TRANSITION_MS = 280
+

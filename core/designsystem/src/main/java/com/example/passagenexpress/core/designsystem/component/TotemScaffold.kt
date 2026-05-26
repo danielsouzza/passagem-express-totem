@@ -35,12 +35,16 @@ fun TotemScreenScaffold(
     eyebrow: String? = null,
     step: Int? = null,
     totalSteps: Int = 6,
+    onFilterClick: (() -> Unit)? = null,
     footer: (@Composable () -> Unit)? = null,
     stickyBottom: (@Composable () -> Unit)? = null,
     body: @Composable () -> Unit,
 ) {
     val statusBar = LocalTotemStatusBar.current?.let { base ->
-        if (step != null) base.copy(currentStep = step, totalSteps = totalSteps) else base
+        var merged = base
+        if (step != null) merged = merged.copy(currentStep = step, totalSteps = totalSteps)
+        if (onFilterClick != null) merged = merged.copy(onFilterClick = onFilterClick)
+        merged
     }
     val showInlineEyebrow = eyebrow != null && step == null
     Surface(

@@ -19,11 +19,12 @@ class AuthInterceptor @Inject constructor(
         val original = chain.request()
         val subdomain = runBlocking { totemConfigRepository.config.first().subdomain }
 
+        // `subdomain` vai SEMPRE em qualquer método. Quando não há subdomain configurado,
+        // mandamos string vazia — `?subdomain=` (essa API é doida e diferencia ausente
+        // de vazio, então o param sempre tem que estar presente).
         val urlBuilder = original.url.newBuilder()
-        if (subdomain.isNotEmpty() && original.method.equals("GET", ignoreCase = true)) {
-            if (original.url.queryParameter(SUBDOMAIN_PARAM) == null) {
-                urlBuilder.addQueryParameter(SUBDOMAIN_PARAM, subdomain)
-            }
+        if (original.url.queryParameter(SUBDOMAIN_PARAM) == null) {
+            urlBuilder.addQueryParameter(SUBDOMAIN_PARAM, subdomain)
         }
 
         val builder = original.newBuilder()

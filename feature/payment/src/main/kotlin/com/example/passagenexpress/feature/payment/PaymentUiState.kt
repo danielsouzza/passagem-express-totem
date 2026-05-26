@@ -54,10 +54,22 @@ enum class PaymentStatus { Pending, Approved }
 
 enum class PaymentMethod { Pix, Card }
 
+enum class CardType { Credit, Debit }
+
+/**
+ * Opções escolhidas no seletor de cartão antes de disparar o intent no Point Tap.
+ * `installments` só é usado quando `type == Credit` (débito é sempre 1x).
+ */
+data class CardOptions(
+    val type: CardType = CardType.Credit,
+    val installments: Int = 1,
+)
+
 /** Estado do fluxo de cartão via Mercado Pago Point Tap. */
 data class CardState(
+    val options: CardOptions = CardOptions(),
     val stage: CardStage = CardStage.Idle,
-    val intentId: String? = null,
+    val orderId: String? = null,
     val paymentMethod: String? = null,
     val installments: Int? = null,
     val amountCents: Long? = null,

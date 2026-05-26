@@ -4,10 +4,10 @@
     <selectionStates>
       <SelectionState runConfigName="app">
         <option name="selectionMode" value="DROPDOWN" />
-        <DropdownSelection timestamp="2026-05-07T00:34:15.418396900Z">
+        <DropdownSelection timestamp="2026-05-20T15:20:53.111335700Z">
           <Target type="DEFAULT_BOOT">
             <handle>
-              <DeviceId pluginId="LocalEmulator" identifier="path=C:\Users\User\.android\avd\Gertec_SK210_Kiosk.avd" />
+              <DeviceId pluginId="LocalEmulator" identifier="path=C:\Users\User\.android\avd\Gertec_SK210.avd" />
             </handle>
           </Target>
         </DropdownSelection>

@@ -30,7 +30,14 @@ fun TotemApp(viewModel: TotemRootViewModel = hiltViewModel()) {
                 navController = navController,
                 startDestination = SETUP_ROUTE,
             )
-            RootDestination.Idle -> TotemAppChrome {
+            RootDestination.Idle -> TotemAppChrome(
+                onHomeClick = {
+                    navController.navigate(IDLE_ROUTE) {
+                        popUpTo(IDLE_ROUTE) { inclusive = false }
+                        launchSingleTop = true
+                    }
+                },
+            ) {
                 TotemNavHost(
                     navController = navController,
                     startDestination = IDLE_ROUTE,

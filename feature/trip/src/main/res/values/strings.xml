@@ -22,4 +22,11 @@
     <string name="trip_label_duration">Duração</string>
     <string name="trip_label_per_person">Por pessoa</string>
     <string name="trip_label_pix">No pix</string>
+    <string name="trip_filter_title">Alterar filtros</string>
+    <string name="trip_filter_destination">Destino</string>
+    <string name="trip_filter_date">Data</string>
+    <string name="trip_filter_loading">Carregando destinos…</string>
+    <string name="trip_filter_apply">Aplicar</string>
+    <string name="trip_filter_cancel">Cancelar</string>
+    <string name="trip_filter_destinations_empty">Nenhum destino disponível.</string>
 </resources>

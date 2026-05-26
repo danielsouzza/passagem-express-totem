@@ -1,5 +1,6 @@
 package com.example.passagenexpress.feature.trip
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -11,26 +12,55 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.width
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.core.MutableTransitionState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Anchor
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DirectionsBoat
 import androidx.compose.material.icons.filled.DirectionsBoatFilled
+import androidx.compose.material.icons.filled.EventBusy
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Sailing
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupProperties
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -50,8 +80,10 @@ import com.example.passagenexpress.core.designsystem.theme.TotemTheme
 import com.example.passagenexpress.core.domain.model.Municipio
 import com.example.passagenexpress.core.domain.model.TipoComodo
 import com.example.passagenexpress.core.domain.model.Trecho
+import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalTime
+import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
 import java.util.Locale
@@ -75,6 +107,13 @@ fun TripScreen(
             if (trecho != null) onTripConfirmed(trecho)
         },
         onBack = onBack,
+        onOpenFilters = viewModel::onOpenFilters,
+        onDismissFilters = viewModel::onDismissFilters,
+        onSheetSelectDestino = viewModel::onSheetSelectDestino,
+        onSheetSelectDate = viewModel::onSheetSelectDate,
+        onSheetPrevMonth = viewModel::onSheetPrevMonth,
+        onSheetNextMonth = viewModel::onSheetNextMonth,
+        onApplyFilters = viewModel::onApplyFilters,
     )
 }
 
@@ -86,6 +125,13 @@ private fun TripContent(
     onRetry: () -> Unit,
     onContinue: () -> Unit,
     onBack: () -> Unit,
+    onOpenFilters: () -> Unit = {},
+    onDismissFilters: () -> Unit = {},
+    onSheetSelectDestino: (String, String) -> Unit = { _, _ -> },
+    onSheetSelectDate: (LocalDate) -> Unit = {},
+    onSheetPrevMonth: () -> Unit = {},
+    onSheetNextMonth: () -> Unit = {},
+    onApplyFilters: () -> Unit = {},
 ) {
     val subtitle = if (state.origemNome.isNotEmpty() && state.destinoNome.isNotEmpty()) {
         stringResFmt(R.string.trip_subtitle_route, state.origemNome, state.destinoNome)
@@ -95,6 +141,7 @@ private fun TripContent(
         step = 3,
         title = stringRes(R.string.trip_title),
         subtitle = subtitle,
+        onFilterClick = onOpenFilters,
         footer = {
             TotemSecondaryButton(text = stringRes(R.string.trip_back), onClick = onBack)
             Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
@@ -129,11 +176,277 @@ private fun TripContent(
                             verticalArrangement = Arrangement.spacedBy(TotemTheme.dimens.space12),
                             contentPadding = PaddingValues(vertical = TotemTheme.dimens.space12),
                         ) {
-                            items(trips.trechos, key = { it.id }) { trecho ->
-                                TripCard(
-                                    trecho = trecho,
-                                    selected = state.selectedTrechoId == trecho.id,
-                                    onClick = { onSelectTrip(trecho) },
+                            itemsIndexed(
+                                items = trips.trechos,
+                                key = { _, t -> t.id },
+                            ) { index, trecho ->
+                                StaggeredItem(index = index) {
+                                    TripCard(
+                                        trecho = trecho,
+                                        selected = state.selectedTrechoId == trecho.id,
+                                        onClick = { onSelectTrip(trecho) },
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    val sheet = state.filterSheet
+    if (sheet !is FilterSheetState.Hidden) {
+        FilterDialog(
+            sheet = sheet,
+            onDismiss = onDismissFilters,
+            onSelectDestino = onSheetSelectDestino,
+            onSelectDate = onSheetSelectDate,
+            onPrevMonth = onSheetPrevMonth,
+            onNextMonth = onSheetNextMonth,
+            onApply = onApplyFilters,
+        )
+    }
+}
+
+@Composable
+private fun FilterDialog(
+    sheet: FilterSheetState,
+    onDismiss: () -> Unit,
+    onSelectDestino: (String, String) -> Unit,
+    onSelectDate: (LocalDate) -> Unit,
+    onPrevMonth: () -> Unit,
+    onNextMonth: () -> Unit,
+    onApply: () -> Unit,
+) {
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            color = TotemPalette.Paper,
+            shape = RoundedCornerShape(TotemTheme.dimens.radiusLg),
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 320.dp, max = 820.dp),
+        ) {
+            Column(modifier = Modifier.padding(TotemTheme.dimens.space24)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Text(
+                        text = stringRes(R.string.trip_filter_title),
+                        style = MaterialTheme.typography.headlineSmall.copy(
+                            fontWeight = FontWeight.Bold,
+                        ),
+                        color = TotemPalette.Ink,
+                    )
+                    IconButton(onClick = onDismiss) {
+                        Icon(
+                            imageVector = Icons.Filled.Close,
+                            contentDescription = stringRes(R.string.trip_filter_cancel),
+                            tint = TotemPalette.Ink,
+                        )
+                    }
+                }
+                Spacer(Modifier.height(TotemTheme.dimens.space16))
+                when (sheet) {
+                    FilterSheetState.Hidden -> Unit
+                    FilterSheetState.Loading -> Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = TotemTheme.dimens.space24),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            CircularProgressIndicator(color = TotemPalette.Accent)
+                            Spacer(Modifier.height(TotemTheme.dimens.space12))
+                            Text(
+                                text = stringRes(R.string.trip_filter_loading),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = TotemPalette.InkMuted,
+                            )
+                        }
+                    }
+                    is FilterSheetState.Open -> {
+                        Column(
+                            modifier = Modifier
+                                .weight(1f, fill = false)
+                                .verticalScroll(rememberScrollState()),
+                            verticalArrangement = Arrangement.spacedBy(TotemTheme.dimens.space16),
+                        ) {
+                            FilterSectionLabel(text = stringRes(R.string.trip_filter_destination))
+                            DestinationDropdown(
+                                destinations = sheet.destinations,
+                                selectedSlug = sheet.selectedDestinoSlug,
+                                selectedNome = sheet.selectedDestinoNome,
+                                onSelect = onSelectDestino,
+                            )
+                            FilterSectionLabel(text = stringRes(R.string.trip_filter_date))
+                            CalendarPicker(
+                                today = LocalDate.now(),
+                                selected = sheet.selectedDate,
+                                visibleMonth = sheet.visibleMonth,
+                                onSelect = onSelectDate,
+                                onPrevMonth = onPrevMonth,
+                                onNextMonth = onNextMonth,
+                            )
+                            if (sheet.error != null) {
+                                Text(
+                                    text = sheet.error,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.error,
+                                )
+                            }
+                        }
+                        Spacer(Modifier.height(TotemTheme.dimens.space20))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(TotemTheme.dimens.space12),
+                        ) {
+                            TotemSecondaryButton(
+                                text = stringRes(R.string.trip_filter_cancel),
+                                onClick = onDismiss,
+                                modifier = Modifier.weight(1f),
+                            )
+                            TotemPrimaryButton(
+                                text = stringRes(R.string.trip_filter_apply),
+                                onClick = onApply,
+                                modifier = Modifier.weight(1f),
+                                enabled = sheet.selectedDestinoSlug.isNotEmpty(),
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun FilterSectionLabel(text: String) {
+    Text(
+        text = text.uppercase(),
+        style = MaterialTheme.typography.labelMedium.copy(
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 1.5.sp,
+        ),
+        color = TotemPalette.Accent,
+    )
+}
+
+@Composable
+private fun DestinationDropdown(
+    destinations: List<Municipio>,
+    selectedSlug: String,
+    selectedNome: String,
+    onSelect: (String, String) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    var anchorSize by remember { mutableStateOf(androidx.compose.ui.unit.IntSize.Zero) }
+    val density = LocalDensity.current
+    val label = selectedNome.ifEmpty {
+        destinations.firstOrNull { it.slug == selectedSlug }?.nome.orEmpty()
+    }
+    Box {
+        Surface(
+            shape = RoundedCornerShape(TotemTheme.dimens.radiusLg),
+            color = TotemPalette.Paper,
+            border = BorderStroke(
+                width = if (expanded) 2.dp else 1.5.dp,
+                color = if (expanded) TotemPalette.Accent else TotemPalette.Hairline,
+            ),
+            modifier = Modifier
+                .fillMaxWidth()
+                .onSizeChanged { anchorSize = it }
+                .clip(RoundedCornerShape(TotemTheme.dimens.radiusLg))
+                .clickable(enabled = destinations.isNotEmpty()) { expanded = !expanded },
+        ) {
+            Row(
+                modifier = Modifier.padding(
+                    horizontal = TotemTheme.dimens.space20,
+                    vertical = TotemTheme.dimens.space16,
+                ),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(TotemTheme.dimens.space12),
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.LocationOn,
+                    contentDescription = null,
+                    tint = TotemPalette.Accent,
+                    modifier = Modifier.size(22.dp),
+                )
+                Text(
+                    text = label.ifEmpty {
+                        if (destinations.isEmpty()) stringRes(R.string.trip_filter_destinations_empty)
+                        else stringRes(R.string.trip_filter_destination)
+                    },
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.SemiBold,
+                    ),
+                    color = if (label.isEmpty()) TotemPalette.InkMuted else TotemPalette.Ink,
+                    modifier = Modifier.weight(1f),
+                )
+                Icon(
+                    imageVector = Icons.Filled.ArrowDropDown,
+                    contentDescription = null,
+                    tint = TotemPalette.InkMuted,
+                )
+            }
+        }
+        if (expanded && destinations.isNotEmpty()) {
+            Popup(
+                alignment = Alignment.TopStart,
+                offset = IntOffset(0, anchorSize.height + with(density) { 4.dp.roundToPx() }),
+                onDismissRequest = { expanded = false },
+                properties = PopupProperties(focusable = true),
+            ) {
+                Surface(
+                    color = TotemPalette.Paper,
+                    shape = RoundedCornerShape(TotemTheme.dimens.radiusLg),
+                    border = BorderStroke(1.5.dp, TotemPalette.Hairline),
+                    shadowElevation = 8.dp,
+                    modifier = Modifier
+                        .width(with(density) { anchorSize.width.toDp() })
+                        .heightIn(max = 260.dp),
+                ) {
+                    Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                        destinations.forEachIndexed { index, m ->
+                            val isSelected = m.slug == selectedSlug
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        onSelect(m.slug, m.nome)
+                                        expanded = false
+                                    }
+                                    .padding(
+                                        horizontal = TotemTheme.dimens.space20,
+                                        vertical = TotemTheme.dimens.space12,
+                                    ),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(TotemTheme.dimens.space12),
+                            ) {
+                                Text(
+                                    text = m.nome,
+                                    style = MaterialTheme.typography.titleMedium.copy(
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                    ),
+                                    color = if (isSelected) TotemPalette.Accent else TotemPalette.Ink,
+                                    modifier = Modifier.weight(1f),
+                                )
+                                if (isSelected) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Check,
+                                        contentDescription = null,
+                                        tint = TotemPalette.Accent,
+                                        modifier = Modifier.size(20.dp),
+                                    )
+                                }
+                            }
+                            if (index != destinations.lastIndex) {
+                                HorizontalDivider(
+                                    color = TotemPalette.Hairline,
+                                    modifier = Modifier.padding(horizontal = TotemTheme.dimens.space20),
                                 )
                             }
                         }
@@ -141,6 +454,244 @@ private fun TripContent(
                 }
             }
         }
+    }
+}
+
+private val LocaleBR: Locale = Locale.forLanguageTag("pt-BR")
+private val ORDERED_DOW: List<DayOfWeek> = listOf(
+    DayOfWeek.SUNDAY, DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY,
+    DayOfWeek.THURSDAY, DayOfWeek.FRIDAY, DayOfWeek.SATURDAY,
+)
+
+@Composable
+private fun CalendarPicker(
+    today: LocalDate,
+    selected: LocalDate,
+    visibleMonth: YearMonth,
+    onSelect: (LocalDate) -> Unit,
+    onPrevMonth: () -> Unit,
+    onNextMonth: () -> Unit,
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = TotemPalette.Paper,
+        shape = RoundedCornerShape(TotemTheme.dimens.radiusLg),
+        border = BorderStroke(1.5.dp, TotemPalette.Hairline),
+    ) {
+        Column(
+            modifier = Modifier.padding(TotemTheme.dimens.space12),
+            verticalArrangement = Arrangement.spacedBy(TotemTheme.dimens.space8),
+        ) {
+            CalendarHeader(
+                visibleMonth = visibleMonth,
+                onPrev = onPrevMonth,
+                onNext = onNextMonth,
+            )
+            CalendarWeekdays()
+            CalendarGrid(
+                visibleMonth = visibleMonth,
+                today = today,
+                selected = selected,
+                onSelect = onSelect,
+            )
+        }
+    }
+}
+
+@Composable
+private fun CalendarHeader(
+    visibleMonth: YearMonth,
+    onPrev: () -> Unit,
+    onNext: () -> Unit,
+) {
+    val monthLabel = visibleMonth.month
+        .getDisplayName(TextStyle.FULL, LocaleBR)
+        .replaceFirstChar { it.uppercase(LocaleBR) } + " " + visibleMonth.year
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(TotemTheme.dimens.space8),
+        ) {
+            Icon(
+                imageVector = Icons.Filled.CalendarMonth,
+                contentDescription = null,
+                tint = TotemPalette.Ink,
+                modifier = Modifier.size(20.dp),
+            )
+            Text(
+                text = monthLabel,
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                color = TotemPalette.Ink,
+            )
+        }
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(TotemTheme.dimens.space8),
+        ) {
+            CalendarArrow(
+                icon = Icons.AutoMirrored.Filled.ArrowBack,
+                description = stringRes(R.string.trip_prev_date),
+                onClick = onPrev,
+            )
+            CalendarArrow(
+                icon = Icons.AutoMirrored.Filled.ArrowForward,
+                description = stringRes(R.string.trip_next_date),
+                onClick = onNext,
+            )
+        }
+    }
+}
+
+@Composable
+private fun CalendarArrow(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    description: String,
+    onClick: () -> Unit,
+) {
+    Surface(
+        color = TotemPalette.Paper,
+        shape = RoundedCornerShape(10.dp),
+        border = BorderStroke(1.dp, TotemPalette.Hairline),
+        modifier = Modifier
+            .size(40.dp)
+            .clip(RoundedCornerShape(10.dp))
+            .clickable(onClick = onClick),
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Icon(
+                imageVector = icon,
+                contentDescription = description,
+                tint = TotemPalette.Ink,
+                modifier = Modifier.size(18.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun CalendarWeekdays() {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        ORDERED_DOW.forEach { dow ->
+            Box(
+                modifier = Modifier.weight(1f),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = dow.getDisplayName(TextStyle.SHORT_STANDALONE, LocaleBR)
+                        .uppercase(LocaleBR).take(3),
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.2.sp,
+                    ),
+                    color = TotemPalette.InkMuted,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun CalendarGrid(
+    visibleMonth: YearMonth,
+    today: LocalDate,
+    selected: LocalDate,
+    onSelect: (LocalDate) -> Unit,
+) {
+    val firstOfMonth = visibleMonth.atDay(1)
+    val leadingOffset = firstOfMonth.dayOfWeek.value % 7
+    val daysInMonth = visibleMonth.lengthOfMonth()
+    val totalCells = ((leadingOffset + daysInMonth + 6) / 7) * 7
+
+    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        var cell = 0
+        while (cell < totalCells) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                repeat(7) { col ->
+                    val index = cell + col
+                    val dayNumber = index - leadingOffset + 1
+                    val cellModifier = Modifier
+                        .weight(1f)
+                        .aspectRatio(1.4f)
+                    if (dayNumber in 1..daysInMonth) {
+                        val date = visibleMonth.atDay(dayNumber)
+                        val selectable = !date.isBefore(today)
+                        CalendarDayCell(
+                            modifier = cellModifier,
+                            date = date,
+                            isSelected = date == selected,
+                            isToday = date == today,
+                            selectable = selectable,
+                            onClick = { onSelect(date) },
+                        )
+                    } else {
+                        Box(modifier = cellModifier)
+                    }
+                }
+            }
+            cell += 7
+        }
+    }
+}
+
+@Composable
+private fun CalendarDayCell(
+    modifier: Modifier,
+    date: LocalDate,
+    isSelected: Boolean,
+    isToday: Boolean,
+    selectable: Boolean,
+    onClick: () -> Unit,
+) {
+    val bg = if (isSelected) TotemPalette.Accent else Color.Transparent
+    val fg = when {
+        isSelected -> TotemPalette.Paper
+        !selectable -> TotemPalette.InkSoft
+        isToday -> TotemPalette.Accent
+        else -> TotemPalette.Ink
+    }
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(bg)
+            .let { if (selectable) it.clickable(onClick = onClick) else it }
+            .alpha(if (selectable || isSelected) 1f else 0.45f),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = date.dayOfMonth.toString(),
+            style = MaterialTheme.typography.bodyMedium.copy(
+                fontWeight = if (isSelected || isToday) FontWeight.Bold else FontWeight.Medium,
+                letterSpacing = (-0.2).sp,
+            ),
+            color = fg,
+        )
+    }
+}
+
+@Composable
+private fun StaggeredItem(index: Int, content: @Composable () -> Unit) {
+    val visibility = remember(index) {
+        MutableTransitionState(false).apply { targetState = true }
+    }
+    AnimatedVisibility(
+        visibleState = visibility,
+        enter = fadeIn(tween(260, delayMillis = index * 45)) +
+            slideInVertically(
+                animationSpec = tween(320, delayMillis = index * 45),
+                initialOffsetY = { it / 5 },
+            ),
+    ) {
+        content()
     }
 }
 
@@ -335,12 +886,28 @@ private fun EmptyWithProxima(
 ) {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Column(
+            modifier = Modifier.padding(horizontal = TotemTheme.dimens.space24),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(TotemTheme.dimens.space16),
+            verticalArrangement = Arrangement.spacedBy(TotemTheme.dimens.space12),
         ) {
+            // Ícone tonal no topo — comunica visualmente o "sem viagens" antes do texto.
+            Box(
+                modifier = Modifier
+                    .size(120.dp)
+                    .background(TotemPalette.AccentTint, CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.EventBusy,
+                    contentDescription = null,
+                    tint = TotemPalette.Accent,
+                    modifier = Modifier.size(56.dp),
+                )
+            }
+            Spacer(Modifier.height(TotemTheme.dimens.space8))
             Text(
                 text = stringRes(R.string.trip_empty_title),
-                style = MaterialTheme.typography.headlineSmall,
+                style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
                 color = TotemPalette.Ink,
             )
             Text(
@@ -349,37 +916,29 @@ private fun EmptyWithProxima(
                 color = TotemPalette.InkMuted,
             )
             if (proxima != null) {
-                Spacer(Modifier.height(TotemTheme.dimens.space8))
-                Surface(
-                    shape = RoundedCornerShape(TotemTheme.dimens.radiusLg),
-                    color = TotemPalette.PaperWarm,
-                ) {
-                    Column(
-                        modifier = Modifier.padding(TotemTheme.dimens.space24),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(TotemTheme.dimens.space8),
-                    ) {
-                        Text(
-                            text = stringRes(R.string.trip_next_available_title).uppercase(),
-                            style = MaterialTheme.typography.labelMedium.copy(
-                                fontWeight = FontWeight.Bold,
-                                letterSpacing = 1.5.sp,
-                            ),
-                            color = TotemPalette.Accent,
-                        )
-                        Text(
-                            text = formatProximaDate(proxima.dataEmbarque),
-                            style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.SemiBold),
-                            color = TotemPalette.Ink,
-                        )
-                        Spacer(Modifier.height(TotemTheme.dimens.space8))
-                        TotemPrimaryButton(
-                            text = stringRes(R.string.trip_next_available_action),
-                            onClick = onJumpToProxima,
-                            accent = true,
-                        )
-                    }
-                }
+                Spacer(Modifier.height(TotemTheme.dimens.space24))
+                Text(
+                    text = stringRes(R.string.trip_next_available_title).uppercase(),
+                    style = MaterialTheme.typography.labelMedium.copy(
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.8.sp,
+                    ),
+                    color = TotemPalette.Accent,
+                )
+                Text(
+                    text = formatProximaDate(proxima.dataEmbarque),
+                    style = MaterialTheme.typography.headlineMedium.copy(
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = (-0.5).sp,
+                    ),
+                    color = TotemPalette.Ink,
+                )
+                Spacer(Modifier.height(TotemTheme.dimens.space12))
+                TotemPrimaryButton(
+                    text = stringRes(R.string.trip_next_available_action),
+                    onClick = onJumpToProxima,
+                    accent = true,
+                )
             }
         }
     }

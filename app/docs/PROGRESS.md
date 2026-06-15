@@ -1,6 +1,8 @@
 # Passagens Express — Progresso
 
-> Snapshot do estado em **2026-05-26** após migração para a **nova API de orders** do Mercado Pago Point Tap (campo `payment_intent_id` → `order_id`, cancelamento via `POST /payments/{id}/cancel` em vez de `DELETE`, IDs no formato `ORD…`). **Cartão via Point Tap está implementado** ponta a ponta (criar order, polling 3s/120s, cancel automático ao sair, retry 3x em falha de rede, seletor crédito/débito + parcelas 1×–12× via stepper de setas). Tela de espera virou **`PaymentWaitingScreen` dedicada** (full-screen, sem scaffold) com fundo ambiente animado (3 radial gradients pulsando), Lottie pro cartão em loop e Lottie de aprovação tocando 1×; PIX continua mostrando QR central. Sucesso auto-volta pro Idle em 5s com countdown visível + botão "Comprar passagem" pra pular. **NavHost com slide R→L (avançar) e L→R (voltar)** em 280ms. Listas em `:feature:city` e `:feature:trip` ganharam stagger animation (fade + slide-up por índice). Refatorações visuais: bege `PaperDim` dos chips trocado por `AccentTint` em city/trip/list-row/status-bar pills; `TripScreen` empty state limpo sem card bege; busca de City agora usa `TotemAlphaKeypad` no `stickyBottom` em vez de IME nativo; teclas do keypad com cantos 6dp + sem `graphicsLayer/scale` (sumiu artefato de borda). Hotfix de rede: `AuthInterceptor` manda `?subdomain=` em **todas** as requests (string vazia quando não configurado), `OkHttp.followRedirects(false)` global pra evitar 30x silencioso convertendo POST→GET; BASE_URL migrou pra `https://app.homologacao.techrios.online/`. `.gitignore` corrigido (`build/` em qualquer profundidade), `.gitattributes` adicionado (LF padrão). **Falta agora:** confirmação/impressão de bilhete + resumeorder.
+> Snapshot do estado em **2026-06-09** após implementar o **módulo de impressão de bilhete (USB / ESC-POS nativo)**. Novos módulos `:core:printer` (UsbManager nativo + builder ESC/POS + raster do PDF417, **sem SDK de terceiros**) e `:feature:print` (tela de progresso/erro/retry). Fluxo final: pagamento aprovado → o endpoint de **status**, quando `status == Pago`, já retorna `passagens_agrupadas` com o `passageiro_viagem_id` de cada passagem (**não existe rota `gerar-passagens`**) → `:feature:print` busca `GET passagens/{id}/bilhete-mapeado` de cada uma e imprime **uma a uma** na térmica 58mm. Impressora é **configurável no setup** (novo passo "Impressora": lista devices USB + botão "Testar impressão"; VID/PID gravados no DataStore). **Mudança de UX no sucesso:** a tela de pagamento aprovado agora mostra só "Compra aprovada! Aguarde a impressão do seu bilhete" (sem countdown e sem botão) e segue automático pra impressão; o countdown (**10s**) + botão "Continuar comprando" passaram pra tela de impressão, **só depois do bilhete impresso**. Falha de impressão mostra erro + "Tentar novamente" informando que o bilhete também foi enviado ao telefone dos passageiros; o retry retoma da passagem que faltou.
+>
+> _(Anterior — 2026-05-26)_ Migração para a **nova API de orders** do Mercado Pago Point Tap (`payment_intent_id` → `order_id`, cancel via `POST /payments/{id}/cancel`, IDs `ORD…`). **Cartão via Point Tap** ponta a ponta (criar order, polling 3s/120s, cancel automático ao sair, retry 3x, seletor crédito/débito + parcelas 1×–12×). `PaymentWaitingScreen` dedicada full-screen com fundo ambiente animado + Lotties. **NavHost com slide R→L/L→R** 280ms. Stagger em city/trip. `AuthInterceptor` manda `?subdomain=` em todas as requests; `OkHttp.followRedirects(false)`; BASE_URL em `https://app.homologacao.techrios.online/`. **Falta agora:** resumeorder + polish.
 
 ---
 
@@ -73,7 +75,21 @@ Versões em `gradle/libs.versions.toml`.
                           em 30x; quem precisar tratar 30x lê o response e decide.
                           BuildConfig: API_BASE_URL (homologação HTTPS), API_TOKEN, ENABLE_HTTP_LOGGING
 :core:data                DTOs + mappers + RepositoryImpls + ApiModule + RepositoryModule
-:feature:setup            Wizard 3 etapas (subdomínio opcional → porto com busca → idioma)
+:core:printer             Impressão térmica USB nativa (sem SDK de terceiros): `EscPosWriter`
+                          (comandos ESC/POS + CP850 p/ acento), `EscPosTicketBuilder` (layout do
+                          bilhete em ~32 colunas espelhando `app/bilhete-1740205.pdf`),
+                          `Pdf417Raster` (PNG base64 → raster `GS v 0`), `UsbTicketPrinter`
+                          (UsbManager: resolve device por VID/PID salvo / fallback classe Printer,
+                          permissão runtime via ACTION_USB_PERMISSION, claim interface + bulk OUT).
+                          Implementa `TicketPrinter` (interface em `:core:domain`), binding Hilt.
+:feature:setup            Wizard 4 etapas (subdomínio opcional → porto com busca → **impressora
+                          USB + teste** → idioma)
+:feature:print            Etapa final do fluxo. `PrintViewModel` chama
+                          `ObterPassagensDoPedidoUseCase` (lê as passagens da resposta de status)
+                          e, pra cada `passageiro_viagem_id`, busca `bilhete-mapeado` e imprime.
+                          `PrintScreen`: progresso "Imprimindo bilhete X de N" → `Done` (mostra
+                          countdown 10s + botão "Continuar comprando") | `Failed` (erro + "Tentar
+                          novamente", retoma da passagem que faltou + aviso de envio por telefone).
 :feature:idle             Tela inicial touch-to-start + secret long-press canto sup-esq abre setup
 :feature:city             Tela única de destino (porto já fixa origem). Busca agora abre
                           `TotemAlphaKeypad` no `stickyBottom` (não usa IME nativo). Lista de
@@ -127,10 +143,11 @@ Versões em `gradle/libs.versions.toml`.
                           (Failed/Canceled/Timeout/Expired) mostram ícone + título + Retry.
 
                           **Sucesso** — Lottie `payment_approved` 440dp tocando 1×, título
-                          "Pagamento aprovado!" em `Accent` (azul), countdown "Voltando em Xs…",
-                          botão primary "Comprar passagem" que pula a espera. Auto-return em 5s
-                          chama `onPaid` → `TotemNavHost` navega de volta pro IDLE limpando a
-                          pilha (`popUpTo(IDLE_ROUTE) { inclusive=false }`).
+                          "Compra aprovada!" em `Accent` (azul) + "Aguarde a impressão do seu
+                          bilhete…" (**sem countdown e sem botão aqui**). Após ~3s (`SUCCESS_HOLD_MS`)
+                          chama `onPaid` → `TotemNavHost` navega pra `printRoute(pedidoId)`. O
+                          countdown + "Continuar comprando" só aparecem na `:feature:print` depois
+                          do bilhete impresso.
 ```
 
 ---
@@ -142,7 +159,7 @@ Versões em `gradle/libs.versions.toml`.
 DTOs e mappers para todos os endpoints listados:
 - `ViagemApi` — portos, filtros, trechos-viagem, get-passageiro
 - `ComodoApi` — poltronas, camarotes, livres-por-tipo, reservar/deletar/iniciar-venda
-- `PedidoApi` — criar, ultimo-aberto, gerar-passagens, status
+- `PedidoApi` — criar, ultimo-aberto, status (quando `Pago`, retorna `passagens_agrupadas` com `passageiro_viagem_id`), `passagens/{id}/bilhete-mapeado` (map do bilhete, resposta **crua** sem envelope → `callRaw`). **Não há `gerar-passagens`.**
 - `PagamentoApi` — pix, credito
 - `PointTapApi` — payments (POST), payments/{id}/status (GET), payments/{id}/cancel (POST) — Mercado Pago Point Tap (API nova de orders) via backend próprio
 
@@ -159,10 +176,13 @@ Helpers e serializers custom (em `core/data/remote/parse/`):
 
 ### Telas implementadas — ✅
 
-- **Setup wizard** (3 etapas):
+- **Setup wizard** (4 etapas):
   1. Subdomínio (opcional, OutlinedTextField com IME nativo — operador faz setup com USB keyboard)
   2. Porto de operação (LazyVerticalGrid com **busca live** por nome/município, empty state)
-  3. Idioma padrão (PT-BR / EN-US)
+  3. **Impressora USB** — lista os devices USB conectados (`ListarImpressorasUseCase`), seleção +
+     botão "Testar impressão" (`TestarImpressaoUseCase` → ticket de teste). Salva VID/PID no
+     DataStore. Etapa **opcional** (pulável; fallback auto-detecta interface classe Printer).
+  4. Idioma padrão (PT-BR / EN-US)
 - **Idle** — gradient azul fullscreen, brand mark, CTA pulsante PT/EN, mostra porto configurado no rodapé. Long-press no canto superior esquerdo (até 120dp²) reabre o setup.
 - **City** — tela única de **destino**. O porto configurado no setup já fixa a cidade de embarque, então não pergunta origem. Carrega destinos direto via `/api/filtros?porto_id=X` (que retorna `municipiosDestino` quando há porto). `LazyVerticalGrid` com hero gradient + monogram, busca live + empty/error/retry states.
 - **Date** — `LazyRow` de pílulas (DOW/dia/mês), 14 dias a partir de hoje, badge "Hoje"/"Amanhã". Estado inteiramente local, sem chamada de API.
@@ -214,17 +234,22 @@ Helpers e serializers custom (em `core/data/remote/parse/`):
     - Fundo `AnimatedAmbientBackground` (3 radial gradients translúcidos com scale 0.82–1.22 e timing 3.8s/4.6s/5.2s independentes; success state usa `SuccessAmbientBackground` verde).
     - Topo: pílula de timer "Expira em XX:XX" (só durante Waiting com `showsTimer=true`).
     - Centro: `PixCenter` (QR 360dp) OU `LottieTile(R.raw.payment_waiting_card)` (320dp, loop infinito) OU `ProcessingCenter` (Lottie + spinner) OU `TerminalCenter` (ícone tonal + título). Sucesso usa `ApprovedLottie()` (R.raw.payment_approved, 440dp, 1x).
-    - Abaixo: valor destacado em `displayMedium ExtraBold` OU `AutoReturnLabel("Voltando em Xs…")` no sucesso.
-    - Rodapé: cancelar/retry/back conforme phase. Sucesso → primary "Comprar passagem" (chama `onReturnNow = { approved?.let(onPaid) }`).
-    - **Auto-return em 5s** quando `paymentApproved != null`: `mutableIntStateOf(AUTO_RETURN_SECONDS=5)` + `LaunchedEffect(approved?.pedidoId)` decrementa por segundo, chama `onPaid(approved)` ao zerar. `TotemNavHost` recebe e faz `navigate(IDLE_ROUTE) { popUpTo(IDLE_ROUTE) { inclusive=false }; launchSingleTop=true }`.
+    - Abaixo: valor destacado em `displayMedium ExtraBold` OU `AwaitTicketLabel("Aguarde a impressão do seu bilhete…")` no sucesso.
+    - Rodapé: cancelar/retry/back conforme phase. **Sucesso não tem botão** — segue automático pra impressão.
+    - **Handoff pra impressão:** quando `paymentApproved != null`, `LaunchedEffect(approved?.pedidoId)` espera `SUCCESS_HOLD_MS` (~3s, tempo do Lottie) e chama `onPaid(approved)`. `TotemNavHost` faz `navigate(printRoute(approved.pedidoId))`. O retorno pro Idle acontece só no fim de `:feature:print`.
   - **Lottie JSONs** em `feature/payment/src/main/res/raw/`: `payment_waiting_card.json` (placeholder com ring+dot pulsantes) e `payment_approved.json` (animação real do LottieFiles — halo + circle pop + checkmark + estrelas + texto). Pra trocar, substituir arquivos mantendo os nomes.
+
+- **Print** (`:feature:print`) — etapa final, recebe `pedidoId` via nav (`printRoute`).
+  - `PrintViewModel`: no init chama `ObterPassagensDoPedidoUseCase(pedidoId)` (bate em `/api/pedidos/{id}/status`, extrai `passagens_agrupadas[].passagem_pedidos[].passageiro_viagem_id`). Depois itera: pra cada id → `ObterBilheteMapeadoUseCase` → `ImprimirBilheteUseCase` (USB). Estado `Preparing → Printing(atual,total) → Done | Failed`. Guarda `nextIndex` pra que o retry retome de onde parou (não reimprime).
+  - `PrintScreen`: `Preparing`/`Printing` = `TotemLoading` ("Imprimindo bilhete X de N…"). `Done` = "Bilhetes impressos!" + countdown **10s** ("Voltando em Xs…") + botão "Continuar comprando" (→ Idle). `Failed` = erro + "Tentar novamente" + aviso "o bilhete também foi enviado para o telefone dos passageiros" + "Concluir".
+  - Impressão via `:core:printer` (UsbManager nativo, ESC/POS montado à mão, PDF417 rasterizado do PNG base64). **Premissa pendente:** `bilhete-mapeado` tratado como resposta crua — confirmar se vem com ou sem envelope.
 
 ### Telas pendentes — ⏳ em ordem do fluxo
 
 | # | Tela | Use case principal |
 |---|---|---|
-| 1 | `:feature:confirm` | bilhete + auto-reset 30s + imprimir. Hoje após `PaymentApproved` o totem auto-volta direto pro Idle em 5s (pulando confirm). |
-| 2 | `:feature:resumeorder` | modal "pedido em aberto encontrado" — verificação no boot |
+| ✅ | ~~`:feature:confirm`/impressão~~ | **Feito** como `:feature:print` — imprime 1 bilhete por passageiro na térmica USB. |
+| 1 | `:feature:resumeorder` | modal "pedido em aberto encontrado" — verificação no boot |
 | ⏳ | "× remover" passageiro | Hoje o botão é no-op visual. Definir semântica (liberar reserva via `deletarReserva` + remover form da lista + voltar pra Room se ficar 0). |
 | ⏳ | Lottie definitivo `payment_waiting_card` | JSON atual é placeholder (ring + dot pulsando). Trocar por animação real do LottieFiles (maquininha/cartão batendo). |
 
@@ -307,8 +332,8 @@ Atualmente apontando para **homologação** (HTTPS direto — não usar HTTP, o 
 | DELETE | `/api/reservas/comodo` | cancelar reserva |
 | POST | `/api/pedidos` | criar pedido (origem=3 para totem) |
 | GET | `/api/pedidos/ultimo-aberto/dados` | recuperar carrinho aberto |
-| POST | `/api/pedidos/{id}/gerar-passagens` | confirmar |
-| GET | `/api/pedidos/{id}/status` | polling de status |
+| GET | `/api/pedidos/{id}/status` | polling de status. **Quando `status == "Pago"` retorna o pedido completo com `passagens_agrupadas[].passagem_pedidos[]`** — daí sai o `passageiro_viagem_id` (ex.: 813973) de cada passagem. (Não existe `gerar-passagens`.) |
+| GET | `/api/passagens/{id}/bilhete-mapeado` | map do bilhete (mesma estrutura do print Bluetooth da web) p/ montar ESC/POS. `{id}` = `passageiro_viagem_id`. Resposta **crua** (sem envelope) → `callRaw`. |
 | POST | `/api/pagamentos/pix` | gerar QR PIX |
 | POST | `/api/pagamentos/credito` | iniciar cartão (legado, não usado pelo totem — substituído por Point Tap) |
 | POST | `/api/payments` | **Point Tap (orders)**: criar order. Body: `{pedido_id, amount (centavos), description, installments, payment_type: credit_card\|debit_card, external_reference}`. Resposta envelopada: `{success, data: {order_id: "ORD…", status: OPEN}, message}` |
@@ -333,6 +358,8 @@ Todas envolvem em `{ success: bool, data: T, message: string }`. `parseMoney` pa
 | Redirect 301 em HTTP→HTTPS | Backend de homologação redireciona qualquer request HTTP pra HTTPS, e OkHttp por default converte POST→GET (HTTP spec em 301/302/303) descartando o body | `BASE_URL` em HTTPS direto + `OkHttp.followRedirects(false)` global |
 | Point Tap `pedido_id` obrigatório no body | O backend wrapper exige tanto `pedido_id` quanto `external_reference` no `POST /api/payments` — `external_reference` sozinho retorna validation error | `PointTapOrderRequestDto` carrega ambos (idem `pedidoId.toString()` em external_reference) |
 | Point Tap respostas envelopadas | `POST /api/payments`, `GET .../status`, `POST .../cancel` todos retornam `{success, data, message}` (igual o resto da API) | `PointTapApi` usa `ApiEnvelope<T>` + `callEnvelope` no repo (não usa `safeApiCall` direto) |
+| `passageiro_viagem_id` no `/status` pago | Em `passagem_pedidos[]` o id da impressão é `passageiro_viagem_id` (ex.: 813973), **não** o `id` do passagem_pedido (ex.: 37571) nem o do `contato` (vem `"0"`) | `PassagemPedidoDto` prefere `passageiro_viagem_id`, fallback `id`; `StatusResponseDto.toPassagens()` |
+| `bilhete-mapeado` cru + `formasPagamento` numérico | A rota retorna o objeto sem envelope `{success,data,message}`; `formasPagamento` vem como `{"Pix": 121}` (valor numérico) e pode virar `[]` quando vazio | `PedidoApi.obterBilheteMapeado` retorna o DTO direto + `callRaw`; `formasPagamento: JsonElement` normalizado em `toDomain` (tolera `[]`) |
 | Point Tap migração intent → order (2026-05-26) | Backend trocou de "payment intent" pra "order". `payment_intent_id` virou `order_id` (formato `ORD…`), e cancelamento virou `POST /payments/{id}/cancel` com body vazio em vez de `DELETE`. Domínio renomeado: `PointTapIntent` → `PointTapOrder`, `NovaPointTapIntent` → `NovaPointTapOrder`, use cases `CriarPointTapIntentUseCase`/`CancelarPointTapIntentUseCase` → `CriarPointTapOrderUseCase`/`CancelarPointTapOrderUseCase`. `obterStatus(orderId)` mantém path `/status` mas o param foi renomeado. | `PointTapOrderResponseDto.orderId` com `@SerialName("order_id")`; `PointTapApi.cancelarOrder` usa `@POST(".../cancel")` com `@Body Map<String,String> = emptyMap()` |
 
 Detalhes em `~/Repositories/passagem-express/src/js/services/{Viagem,Pedido,Comodo}Service.js`, com referência ao uso em `pages/home.vue` e `components/Onboarding.vue`.
@@ -355,6 +382,13 @@ ComodoLivre(tipoComodidadeId, quantidade)
 Passageiro(nome, cpf, telefone, email?, dataNascimento?, tipoDocumento)
 Pedido(id, status, totalPassagens, totalTaxas, total, criadoEm, itens)
 ItemPedido(comodoId, tipoComodidadeId, passageiro, valor, taxaEmbarque, descontoId?, ...)
+PassagemPedido(id, passageiroNome)  // id = passageiro_viagem_id (vem do /status pago)
+BilheteMapeado(agencia, empresa, embarcacao, trecho, viagem, embarque, comodo, valores,
+               formasPagamento: Map, troco, passageiros: List, bilhete, codigoBarras,
+               validacao, tributos, observacoes: List, pdf417?)  // espelho do bilhete-mapeado
+// Impressão (core/domain/printer/):
+TicketPrinter { listDevices(): List<UsbPrinterDevice>; print(BilheteMapeado); testPrint() }
+UsbPrinterDevice(vendorId, productId, name)
 Pagamento.Pix(pedidoId, valor, qrCodeBase64?, copiaECola, expiraEm?)
 Pagamento.Cartao(pedidoId, valor, tipo)  // legado /api/pagamentos/credito
 FormaPagamento(id, codigo, nome)  // vinda do backend em iniciarVenda
@@ -367,7 +401,7 @@ PointTapPaymentResult(status, paymentMethod, installments, amountCents)
 NovaPointTapOrder(pedidoId, amountCents, description, installments, paymentType, externalReference)
 PointTapPaymentType { CreditCard, DebitCard }  // → "credit_card" / "debit_card"
 TotemConfig(subdomain, portoId, portoSlug, portoNome, municipioCodigo, municipioNome,
-            defaultLanguage, setupComplete)
+            defaultLanguage, setupComplete, printerVendorId?, printerProductId?)
 AppLanguage { PtBr("pt-BR"), EnUs("en-US") }
 ```
 
@@ -392,11 +426,12 @@ MainActivity
 
            CITY(destino) → DATE(destinoSlug,destinoNome) → TRIP(destinoSlug,destinoNome,date)
                          → ROOM(trechoJson) → PASSENGER(trechoJson,inicioVendaJson)
-                         → PAYMENT(trechoJson,passengersJson) → [auto 5s] → IDLE
+                         → PAYMENT(trechoJson,passengersJson) → PRINT(pedidoId) → IDLE
            (origem é implícita do porto configurado; trechoJson trafega opaco até Payment, que decoda)
-           Após PaymentApproved: navigate(IDLE_ROUTE) { popUpTo(IDLE_ROUTE) { inclusive=false } }
-           limpa toda a pilha da compra. :feature:confirm ainda não existe — vai entrar entre
-           PAYMENT e IDLE quando a impressão for integrada.
+           Após PaymentApproved: "Compra aprovada! Aguarde seu bilhete" (~3s, sem botão) →
+           navigate(printRoute(pedidoId)). PRINT lê as passagens do /status pago, imprime cada
+           bilhete na térmica USB, mostra countdown 10s + "Continuar comprando" e então
+           navigate(IDLE_ROUTE) { popUpTo(IDLE_ROUTE) { inclusive=false } } limpando a pilha.
 
            Transições: NavHost com slideInHorizontally/slideOutHorizontally em SlideDirection.Left
            (avançar) ou .Right (voltar), 280ms tween.
@@ -410,7 +445,7 @@ MainActivity
 2. ~~**`:feature:room`**~~ ✅ — ramifica entre poltronas / camarotes / free-seating com base em `Trecho.poltronaLivre` e `Trecho.tiposComodos`. Use cases: `ListarPoltronas/Camarotes/ComodosLivresUseCase`, `ReservarComodoUseCase`, `DeletarReservaUseCase`, `IniciarVendaUseCase`. Trecho passa via `TrechoNavPayload` JSON URL-encoded.
 3. ~~**`:feature:passenger`**~~ ✅ — formulário N passageiros (um por vez via Anterior/Próximo, escondido quando size==1). Todos os inputs usam `TotemInputField` outlined + caret piscando; teclados `TotemNumericKeypad`/`TotemAlphaKeypad` (QWERTY PT-BR) no `stickyBottom` do scaffold. Contato derivado de `forms[0]` automaticamente. Máscaras inline (`DocumentoMask`/`PhoneMask`/`BirthdateMask`). Busca de passageiro `BuscarPassageiroUseCase(tipo,doc)`. Payload chega via `InicioVendaNavPayload` + `trechoJson` (opaco pass-through). Emite `PassengerCompleted(trechoId, passageiros, contato, rawTrechoArg)`.
 4. ~~**`:feature:payment` (PIX + Cartão Point Tap)**~~ ✅ — Init monta `NovoPedido` + `CriarPedidoUseCase`. Seletor PIX|Cartão. PIX igual antes (QR via ZXing + polling 10s + timer 30min). Cartão via **Mercado Pago Point Tap (API de orders)**: seletor crédito/débito + stepper de parcelas 1×–12×, `CriarPointTapOrderUseCase` → polling 3s/timeout 120s → cancel automático on exit via `POST /payments/{id}/cancel`. `PaymentWaitingScreen` dedicada full-screen com Lottie e auto-return 5s pro Idle.
-5. **`:feature:confirm`** — bilhete + auto-reset 30s. Integrar impressão (TODO: SDK específico do hardware). Hoje após `PaymentApproved` o NavHost já volta direto pro IDLE limpando a pilha — confirm vai entrar nesse meio.
+5. ~~**`:feature:confirm` / impressão**~~ ✅ — feito como **`:feature:print` + `:core:printer`**. Endpoint de `/status` (pago) entrega `passagens_agrupadas`; pra cada `passageiro_viagem_id` busca `bilhete-mapeado` e imprime na térmica USB 58mm via UsbManager nativo + ESC/POS (PDF417 rasterizado). Impressora configurável no setup (passo 3 + teste). **Pendente:** confirmar shape do `bilhete-mapeado` (com/sem envelope) e validar no hardware real.
 6. **`:feature:resumeorder`** — checa `obterUltimoPedidoAberto` no boot, mostra modal.
 7. **Polish:** timeout global de inatividade, stepper component, Lottie definitivo do waiting de cartão.
 8. **Testes:** instrumentation tests para o fluxo end-to-end.
@@ -429,7 +464,9 @@ MainActivity
 
 Para sessões futuras com Claude Code, há memórias salvas que cobrem:
 - `project_overview.md`, `project_architecture.md`, `project_mvp_scope.md`, `project_totem_target.md`, `project_totem_setup.md`
+- `project_print_module.md` (módulo de impressão USB/ESC-POS + premissas de backend)
 - `reference_backend_api.md`, `reference_web_project.md`, `reference_design_files.md`, `reference_api_token.md`
+- `reference_cli_build.md` (JAVA_HOME → jbr do Android Studio p/ rodar gradlew)
 - `feedback_naming_totem.md` (Totem, não Kiosk)
 - `feedback_agp9_builtin_kotlin.md` (workarounds AGP 9 + Hilt + KSP)
 - `feedback_dont_invent_versions.md` (verificar Maven Central antes de pinar)

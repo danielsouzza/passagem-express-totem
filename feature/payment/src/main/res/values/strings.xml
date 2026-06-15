@@ -36,7 +36,7 @@
     <string name="payment_pix_generating">Gerando…</string>
     <string name="payment_pix_qr_title">Aponte a câmera do banco</string>
     <string name="payment_status_waiting">Aguardando pagamento…</string>
-    <string name="payment_status_paid">Pagamento aprovado!</string>
+    <string name="payment_status_paid">Compra aprovada!</string>
     <string name="payment_status_expired">Tempo esgotado. Gere um novo PIX.</string>
     <string name="payment_timer_label">Expira em %1$s</string>
     <string name="payment_error_create_order">Falha ao criar o pedido</string>
@@ -48,7 +48,7 @@
     <string name="payment_card_waiting_title">Pague na maquininha ao lado</string>
     <string name="payment_card_waiting_hint">Insira, aproxime ou passe seu cartão</string>
     <string name="payment_card_processing">Processando pagamento…</string>
-    <string name="payment_card_success">Pagamento aprovado!</string>
+    <string name="payment_card_success">Compra aprovada!</string>
     <string name="payment_card_canceled">Pagamento cancelado</string>
     <string name="payment_card_failed">Falha no pagamento</string>
     <string name="payment_card_timeout">Tempo esgotado</string>
@@ -73,4 +73,5 @@
     <string name="payment_waiting_expires_in">Expira em %1$s</string>
     <string name="payment_waiting_auto_return">Voltando em %1$ds…</string>
     <string name="payment_waiting_buy_another">Comprar passagem</string>
+    <string name="payment_waiting_await_ticket">Aguarde a impressão do seu bilhete…</string>
 </resources>

@@ -13,7 +13,15 @@
     <string name="setup_porto_search_hint">Buscar porto ou município</string>
     <string name="setup_porto_search_empty">Nenhum porto bate com a busca</string>
     <string name="setup_porto_clear_search">Limpar busca</string>
-    <string name="setup_step_language_title">3. Idioma padrão</string>
+    <string name="setup_step_printer_title">3. Impressora de bilhetes</string>
+    <string name="setup_step_printer_subtitle">Selecione a impressora térmica USB conectada ao totem e faça um teste de impressão.</string>
+    <string name="setup_printer_refresh">Atualizar lista</string>
+    <string name="setup_printer_empty">Nenhuma impressora USB detectada. Conecte a impressora e toque em \"Atualizar lista\".</string>
+    <string name="setup_printer_test">Testar impressão</string>
+    <string name="setup_printer_testing">Imprimindo teste…</string>
+    <string name="setup_printer_test_ok">Teste enviado! Confira o ticket impresso.</string>
+    <string name="setup_printer_skip">Pular esta etapa</string>
+    <string name="setup_step_language_title">4. Idioma padrão</string>
     <string name="setup_step_language_subtitle">Define o idioma que aparece para o cliente quando ele toca para começar.</string>
     <string name="setup_language_pt">Português (Brasil)</string>
     <string name="setup_language_en">English</string>

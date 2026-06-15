@@ -1,5 +1,6 @@
 package com.example.passagenexpress.core.data.remote.api
 
+import com.example.passagenexpress.core.data.remote.dto.BilheteMapeadoDto
 import com.example.passagenexpress.core.data.remote.dto.CriarPedidoRequestDto
 import com.example.passagenexpress.core.data.remote.dto.PedidoDto
 import com.example.passagenexpress.core.data.remote.dto.StatusResponseDto
@@ -16,9 +17,13 @@ interface PedidoApi {
     @GET("api/pedidos/ultimo-aberto/dados")
     suspend fun obterUltimoAberto(): ApiEnvelope<PedidoDto?>
 
-    @POST("api/pedidos/{id}/gerar-passagens")
-    suspend fun gerarPassagens(@Path("id") pedidoId: Long): ApiEnvelope<PedidoDto>
-
+    // Quando status == Pago, a resposta já traz `passagens_agrupadas` com os passageiro_viagem_id.
     @GET("api/pedidos/{id}/status")
     suspend fun obterStatus(@Path("id") pedidoId: Long): ApiEnvelope<StatusResponseDto>
+
+    // Retorna o map do bilhete "cru" (sem o envelope {success,data,message}).
+    @GET("api/passagens/{id}/bilhete-mapeado")
+    suspend fun obterBilheteMapeado(
+        @Path("id") passageiroViagemId: Long,
+    ): BilheteMapeadoDto
 }

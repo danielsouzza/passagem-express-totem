@@ -62,29 +62,20 @@ fun PaymentScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val approved = state.paymentApproved
-    // Quando o pagamento é aprovado, a tela fica 5s mostrando "Pagamento aprovado!" e
-    // depois auto-volta pro Idle via `onPaid`. O usuário não tem botão de Voltar — é
-    // uma transição automática pra reset do totem entre clientes.
-    var autoReturnSeconds by remember(approved?.pedidoId) {
-        mutableIntStateOf(AUTO_RETURN_SECONDS)
-    }
+    // Pagamento aprovado: mostra "Compra aprovada! Aguarde seu bilhete" por um instante e
+    // segue automaticamente pra etapa de impressão (sem countdown e sem botão aqui — o
+    // "Continuar comprando" só aparece depois que o bilhete é impresso).
     LaunchedEffect(approved?.pedidoId) {
         if (approved == null) return@LaunchedEffect
-        autoReturnSeconds = AUTO_RETURN_SECONDS
-        while (autoReturnSeconds > 0) {
-            kotlinx.coroutines.delay(1_000)
-            autoReturnSeconds -= 1
-        }
+        kotlinx.coroutines.delay(SUCCESS_HOLD_MS)
         onPaid(approved)
     }
     if (state.orderStage is OrderStage.Ready && isWaitingActive(state)) {
         PaymentWaitingScreen(
             state = state,
-            autoReturnSeconds = if (approved != null) autoReturnSeconds else null,
             onCancel = viewModel::onCancelarPagamento,
             onRetryPix = viewModel::onGerarPix,
             onRetryCard = viewModel::onPagarComCartao,
-            onReturnNow = { approved?.let(onPaid) },
         )
         return
     }
@@ -114,7 +105,8 @@ private fun isWaitingActive(state: PaymentUiState): Boolean = when (state.select
     PaymentMethod.Card -> state.card.stage !is CardStage.Idle
 }
 
-private const val AUTO_RETURN_SECONDS = 5
+/** Tempo que a tela de "Compra aprovada" fica visível antes de ir pra impressão. */
+private const val SUCCESS_HOLD_MS = 3_000L
 
 @Composable
 private fun PaymentContent(

@@ -12,9 +12,14 @@ class CompletarSetupUseCase @Inject constructor(
         subdomain: String,
         porto: Porto,
         language: AppLanguage,
+        printerVendorId: Int? = null,
+        printerProductId: Int? = null,
     ) {
         totemConfigRepository.setSubdomain(subdomain)
         totemConfigRepository.setPorto(porto)
+        if (printerVendorId != null && printerProductId != null) {
+            totemConfigRepository.setPrinter(printerVendorId, printerProductId)
+        }
         totemConfigRepository.setLanguage(language)
         totemConfigRepository.completeSetup()
     }

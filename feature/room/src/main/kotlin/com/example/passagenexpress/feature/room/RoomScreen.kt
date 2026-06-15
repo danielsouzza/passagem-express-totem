@@ -66,6 +66,7 @@ import com.example.passagenexpress.core.designsystem.theme.TotemPalette
 import com.example.passagenexpress.core.designsystem.theme.TotemTheme
 import com.example.passagenexpress.core.domain.model.Comodo
 import com.example.passagenexpress.core.domain.model.Trecho
+import com.example.passagenexpress.core.domain.model.precoBaseComDesconto
 import com.example.passagenexpress.core.domain.repository.InicioVenda
 import java.time.LocalDate
 import java.time.LocalTime
@@ -427,7 +428,7 @@ private fun RoomGrid(
                     RoomCard(
                         name = (c.nome ?: c.numeracao?.toString().orEmpty()).uppercase(),
                         capacity = c.quantidade,
-                        price = formatMoney((c.valor ?: trecho.valor) + trecho.taxaDeEmbarque),
+                        price = formatMoney(trecho.precoBaseComDesconto(c.valor) + trecho.taxaDeEmbarque),
                         disabled = c.isOcupado,
                         selected = c.id in selectedIds,
                         onClick = { onSelectComodo(c) },
@@ -439,7 +440,7 @@ private fun RoomGrid(
                     RoomCard(
                         name = bucket.tipo.nome.uppercase(),
                         capacity = bucket.livre.quantidade,
-                        price = formatMoney(trecho.valor + trecho.taxaDeEmbarque),
+                        price = formatMoney(trecho.precoBaseComDesconto() + trecho.taxaDeEmbarque),
                         disabled = bucket.livre.quantidade == 0,
                         selected = qty > 0,
                         quantity = qty,
@@ -668,7 +669,7 @@ private fun SelectedSection(
             state.selecionados.porId.forEach { comodo ->
                 SelectedComodoRow(
                     label = comodo.nome ?: comodo.numeracao?.let { String.format(Locale.US, "%02d", it) }.orEmpty(),
-                    valor = formatMoney((comodo.valor ?: trecho.valor) + trecho.taxaDeEmbarque),
+                    valor = formatMoney(trecho.precoBaseComDesconto(comodo.valor) + trecho.taxaDeEmbarque),
                     onRemove = { onSelectComodo(comodo) },
                 )
             }
@@ -677,7 +678,7 @@ private fun SelectedSection(
                 SelectedTipoRow(
                     nome = tipo.nome,
                     quantidade = qtd,
-                    valorUnit = trecho.valor + trecho.taxaDeEmbarque,
+                    valorUnit = trecho.precoBaseComDesconto() + trecho.taxaDeEmbarque,
                     onIncrement = { onIncrement(tipoId) },
                     onDecrement = { onDecrement(tipoId) },
                     onRemove = { onRemoveTipo(tipoId) },

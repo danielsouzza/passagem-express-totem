@@ -25,6 +25,18 @@ suspend inline fun <T, R> callEnvelope(
     is AppResult.Failure -> result
 }
 
+/**
+ * For endpoints that return the payload bare (sem o envelope `{success,data,message}`),
+ * como `bilhete-mapeado`. Apenas mapeia o sucesso da rede; erros HTTP/IO viram [AppError].
+ */
+suspend inline fun <T, R> callRaw(
+    crossinline block: suspend () -> T,
+    crossinline transform: (T) -> R,
+): AppResult<R> = when (val result = safeApiCall { block() }) {
+    is AppResult.Success -> AppResult.Success(transform(result.value))
+    is AppResult.Failure -> result
+}
+
 /** For endpoints whose payload may be legitimately null/absent (e.g. obter-ultimo-aberto). */
 suspend inline fun <T, R> callEnvelopeNullable(
     crossinline block: suspend () -> ApiEnvelope<T?>,

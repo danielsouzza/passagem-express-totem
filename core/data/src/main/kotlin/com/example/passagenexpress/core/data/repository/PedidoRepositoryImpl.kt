@@ -4,9 +4,13 @@ import com.example.passagenexpress.core.common.result.AppResult
 import com.example.passagenexpress.core.data.remote.api.PedidoApi
 import com.example.passagenexpress.core.data.remote.callEnvelope
 import com.example.passagenexpress.core.data.remote.callEnvelopeNullable
+import com.example.passagenexpress.core.data.remote.callRaw
 import com.example.passagenexpress.core.data.remote.dto.parsePedidoStatus
 import com.example.passagenexpress.core.data.remote.dto.toDomain
 import com.example.passagenexpress.core.data.remote.dto.toDto
+import com.example.passagenexpress.core.data.remote.dto.toPassagens
+import com.example.passagenexpress.core.domain.model.BilheteMapeado
+import com.example.passagenexpress.core.domain.model.PassagemPedido
 import com.example.passagenexpress.core.domain.model.Pedido
 import com.example.passagenexpress.core.domain.model.PedidoStatus
 import com.example.passagenexpress.core.domain.repository.NovoPedido
@@ -25,9 +29,12 @@ class PedidoRepositoryImpl @Inject constructor(
     override suspend fun obterUltimoPedidoAberto(): AppResult<Pedido?> =
         callEnvelopeNullable({ api.obterUltimoAberto() }) { dto -> dto?.toDomain() }
 
-    override suspend fun gerarPassagens(pedidoId: Long): AppResult<Pedido> =
-        callEnvelope({ api.gerarPassagens(pedidoId) }) { it.toDomain() }
-
     override suspend fun obterStatus(pedidoId: Long): AppResult<PedidoStatus> =
         callEnvelope({ api.obterStatus(pedidoId) }) { parsePedidoStatus(it.status) }
+
+    override suspend fun obterPassagens(pedidoId: Long): AppResult<List<PassagemPedido>> =
+        callEnvelope({ api.obterStatus(pedidoId) }) { it.toPassagens() }
+
+    override suspend fun obterBilheteMapeado(passageiroViagemId: Long): AppResult<BilheteMapeado> =
+        callRaw({ api.obterBilheteMapeado(passageiroViagemId) }) { it.toDomain() }
 }

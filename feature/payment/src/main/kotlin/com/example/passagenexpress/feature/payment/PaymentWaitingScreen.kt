@@ -85,11 +85,9 @@ import com.example.passagenexpress.feature.payment.ui.generatePixQrCode
 @Composable
 internal fun PaymentWaitingScreen(
     state: PaymentUiState,
-    autoReturnSeconds: Int?,
     onCancel: () -> Unit,
     onRetryPix: () -> Unit,
     onRetryCard: () -> Unit,
-    onReturnNow: () -> Unit,
 ) {
     val mode = state.selectedMethod
     val totalMoney = remember(state.total) { formatMoneyValue(state.total) }
@@ -136,10 +134,10 @@ internal fun PaymentWaitingScreen(
 
                 Spacer(Modifier.height(TotemTheme.dimens.space24))
 
-                // Logo abaixo do centro: valor destacado OU countdown de auto-return.
-                if (isSuccess && autoReturnSeconds != null) {
-                    AutoReturnLabel(seconds = autoReturnSeconds)
-                } else if (!isSuccess) {
+                // Logo abaixo do centro: valor destacado OU aviso de aguardar o bilhete.
+                if (isSuccess) {
+                    AwaitTicketLabel()
+                } else {
                     AmountBlock(totalMoney = totalMoney)
                 }
 
@@ -156,7 +154,6 @@ internal fun PaymentWaitingScreen(
                     isSuccess = isSuccess,
                     mode = mode,
                     onCancel = onCancel,
-                    onReturnNow = onReturnNow,
                     onRetryPix = onRetryPix,
                     onRetryCard = onRetryCard,
                 )
@@ -171,17 +168,12 @@ private fun ActionButton(
     isSuccess: Boolean,
     mode: PaymentMethod,
     onCancel: () -> Unit,
-    onReturnNow: () -> Unit,
     onRetryPix: () -> Unit,
     onRetryCard: () -> Unit,
 ) {
     when {
-        isSuccess -> TotemPrimaryButton(
-            text = stringRes(R.string.payment_waiting_buy_another),
-            onClick = onReturnNow,
-            accent = true,
-            modifier = Modifier.fillMaxWidth(),
-        )
+        // Sucesso: sem botão aqui — segue automático pra impressão do bilhete.
+        isSuccess -> Unit
         // Terminal retryable (Failed/Canceled/Timeout/Expired) — duas opções: tentar
         // novamente o mesmo método OU voltar pro seletor pra escolher outro.
         phase is WaitingPhase.Terminal && phase.retryable -> Row(
@@ -535,11 +527,12 @@ private fun AmountBlock(totalMoney: String) {
 }
 
 @Composable
-private fun AutoReturnLabel(seconds: Int) {
+private fun AwaitTicketLabel() {
     Text(
-        text = stringResFmt(R.string.payment_waiting_auto_return, seconds),
+        text = stringRes(R.string.payment_waiting_await_ticket),
         style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Medium),
         color = TotemPalette.InkMuted,
+        textAlign = TextAlign.Center,
     )
 }
 

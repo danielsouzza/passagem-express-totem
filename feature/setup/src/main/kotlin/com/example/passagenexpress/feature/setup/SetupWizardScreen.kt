@@ -69,6 +69,10 @@ fun SetupWizardScreen(
         onPortoSearchChange = viewModel::onPortoSearchChange,
         onPortoSelected = viewModel::onPortoSelected,
         onAdvanceFromPorto = viewModel::onAdvanceFromPorto,
+        onRefreshPrinters = viewModel::refreshPrinters,
+        onPrinterSelected = viewModel::onPrinterSelected,
+        onTestPrint = viewModel::onTestPrint,
+        onAdvanceFromPrinter = viewModel::onAdvanceFromPrinter,
         onLanguageSelected = viewModel::onLanguageSelected,
         onBack = viewModel::onBack,
         onFinish = viewModel::onFinish,
@@ -84,6 +88,10 @@ private fun SetupWizardContent(
     onPortoSearchChange: (String) -> Unit,
     onPortoSelected: (Porto) -> Unit,
     onAdvanceFromPorto: () -> Unit,
+    onRefreshPrinters: () -> Unit,
+    onPrinterSelected: (com.example.passagenexpress.core.domain.printer.UsbPrinterDevice) -> Unit,
+    onTestPrint: () -> Unit,
+    onAdvanceFromPrinter: () -> Unit,
     onLanguageSelected: (AppLanguage) -> Unit,
     onBack: () -> Unit,
     onFinish: () -> Unit,
@@ -91,11 +99,13 @@ private fun SetupWizardContent(
     val titleRes = when (state.step) {
         SetupStep.Subdomain -> R.string.setup_step_subdomain_title
         SetupStep.Porto -> R.string.setup_step_porto_title
+        SetupStep.Printer -> R.string.setup_step_printer_title
         SetupStep.Language -> R.string.setup_step_language_title
     }
     val subtitleRes = when (state.step) {
         SetupStep.Subdomain -> R.string.setup_step_subdomain_subtitle
         SetupStep.Porto -> R.string.setup_step_porto_subtitle
+        SetupStep.Printer -> R.string.setup_step_printer_subtitle
         SetupStep.Language -> R.string.setup_step_language_subtitle
     }
 
@@ -108,6 +118,7 @@ private fun SetupWizardContent(
                 onBack = onBack,
                 onAdvanceFromSubdomain = onAdvanceFromSubdomain,
                 onAdvanceFromPorto = onAdvanceFromPorto,
+                onAdvanceFromPrinter = onAdvanceFromPrinter,
                 onFinish = onFinish,
             )
         },
@@ -135,6 +146,14 @@ private fun SetupWizardContent(
                         onPortoSelected = onPortoSelected,
                         onRetry = onRetryPortos,
                     )
+                    SetupStep.Printer -> PrinterStep(
+                        printers = state.printers,
+                        selectedPrinter = state.selectedPrinter,
+                        testState = state.printerTest,
+                        onRefresh = onRefreshPrinters,
+                        onPrinterSelected = onPrinterSelected,
+                        onTestPrint = onTestPrint,
+                    )
                     SetupStep.Language -> LanguageStep(
                         selected = state.selectedLanguage,
                         onLanguageSelected = onLanguageSelected,
@@ -151,6 +170,7 @@ private fun WizardFooter(
     onBack: () -> Unit,
     onAdvanceFromSubdomain: () -> Unit,
     onAdvanceFromPorto: () -> Unit,
+    onAdvanceFromPrinter: () -> Unit,
     onFinish: () -> Unit,
 ) {
     if (state.step != SetupStep.Subdomain) {
@@ -169,11 +189,99 @@ private fun WizardFooter(
                 onClick = onAdvanceFromPorto,
                 enabled = state.canAdvanceFromPorto,
             )
+            SetupStep.Printer -> TotemPrimaryButton(
+                text = if (state.selectedPrinter == null) {
+                    stringRes(R.string.setup_printer_skip)
+                } else {
+                    stringRes(R.string.setup_continue)
+                },
+                onClick = onAdvanceFromPrinter,
+                enabled = state.canAdvanceFromPrinter,
+            )
             SetupStep.Language -> TotemPrimaryButton(
                 text = stringRes(R.string.setup_finish),
                 onClick = onFinish,
                 enabled = !state.isSaving,
             )
+        }
+    }
+}
+
+@Composable
+private fun PrinterStep(
+    printers: List<com.example.passagenexpress.core.domain.printer.UsbPrinterDevice>,
+    selectedPrinter: com.example.passagenexpress.core.domain.printer.UsbPrinterDevice?,
+    testState: PrinterTestState,
+    onRefresh: () -> Unit,
+    onPrinterSelected: (com.example.passagenexpress.core.domain.printer.UsbPrinterDevice) -> Unit,
+    onTestPrint: () -> Unit,
+) {
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(TotemTheme.dimens.space16),
+    ) {
+        TotemSecondaryButton(text = stringRes(R.string.setup_printer_refresh), onClick = onRefresh)
+        if (printers.isEmpty()) {
+            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                Text(
+                    text = stringRes(R.string.setup_printer_empty),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                )
+            }
+        } else {
+            LazyVerticalGrid(
+                columns = GridCells.Adaptive(minSize = 260.dp),
+                horizontalArrangement = Arrangement.spacedBy(TotemTheme.dimens.space16),
+                verticalArrangement = Arrangement.spacedBy(TotemTheme.dimens.space16),
+                modifier = Modifier.fillMaxWidth().weight(1f, fill = false),
+            ) {
+                items(printers, key = { "${it.vendorId}:${it.productId}" }) { device ->
+                    val selected = selectedPrinter?.vendorId == device.vendorId &&
+                        selectedPrinter.productId == device.productId
+                    TotemCard(selected = selected, onClick = { onPrinterSelected(device) }) {
+                        Column(
+                            modifier = Modifier.padding(TotemTheme.dimens.space20),
+                            verticalArrangement = Arrangement.spacedBy(TotemTheme.dimens.space4),
+                        ) {
+                            Text(
+                                text = device.name,
+                                style = MaterialTheme.typography.titleLarge,
+                                color = MaterialTheme.colorScheme.onSurface,
+                            )
+                            Text(
+                                text = "VID ${device.vendorId}  ·  PID ${device.productId}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                }
+            }
+            TotemPrimaryButton(
+                text = if (testState is PrinterTestState.Testing) {
+                    stringRes(R.string.setup_printer_testing)
+                } else {
+                    stringRes(R.string.setup_printer_test)
+                },
+                onClick = onTestPrint,
+                enabled = selectedPrinter != null && testState !is PrinterTestState.Testing,
+                trailingArrow = false,
+            )
+            when (testState) {
+                is PrinterTestState.Success -> Text(
+                    text = stringRes(R.string.setup_printer_test_ok),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+                is PrinterTestState.Error -> Text(
+                    text = testState.message,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.error,
+                )
+                else -> Unit
+            }
         }
     }
 }
@@ -425,6 +533,10 @@ private fun SetupWizardPreview() {
             onPortoSearchChange = {},
             onPortoSelected = {},
             onAdvanceFromPorto = {},
+            onRefreshPrinters = {},
+            onPrinterSelected = {},
+            onTestPrint = {},
+            onAdvanceFromPrinter = {},
             onLanguageSelected = {},
             onBack = {},
             onFinish = {},

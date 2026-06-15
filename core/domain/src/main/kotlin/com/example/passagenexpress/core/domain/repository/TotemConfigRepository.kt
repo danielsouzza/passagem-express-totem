@@ -9,6 +9,7 @@ interface TotemConfigRepository {
     val config: Flow<TotemConfig>
     suspend fun setSubdomain(subdomain: String)
     suspend fun setPorto(porto: Porto)
+    suspend fun setPrinter(vendorId: Int, productId: Int)
     suspend fun setLanguage(language: AppLanguage)
     suspend fun completeSetup()
     suspend fun resetSetup()

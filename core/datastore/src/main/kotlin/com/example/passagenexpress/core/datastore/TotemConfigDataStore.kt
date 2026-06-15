@@ -4,6 +4,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.example.passagenexpress.core.domain.model.AppLanguage
@@ -32,6 +33,8 @@ class TotemConfigDataStore @Inject constructor(
                 ?.let { tag -> AppLanguage.entries.firstOrNull { it.tag == tag } }
                 ?: AppLanguage.PtBr,
             setupComplete = prefs[Keys.SetupComplete] ?: false,
+            printerVendorId = prefs[Keys.PrinterVendorId],
+            printerProductId = prefs[Keys.PrinterProductId],
         )
     }
 
@@ -46,6 +49,13 @@ class TotemConfigDataStore @Inject constructor(
             it[Keys.PortoNome] = porto.nome
             it[Keys.MunicipioCodigo] = porto.municipioCodigo
             it[Keys.MunicipioNome] = porto.municipioNome
+        }
+    }
+
+    override suspend fun setPrinter(vendorId: Int, productId: Int) {
+        dataStore.edit {
+            it[Keys.PrinterVendorId] = vendorId
+            it[Keys.PrinterProductId] = productId
         }
     }
 
@@ -70,5 +80,7 @@ class TotemConfigDataStore @Inject constructor(
         val MunicipioNome = stringPreferencesKey("totem_municipio_nome")
         val Language = stringPreferencesKey("totem_language")
         val SetupComplete = booleanPreferencesKey("totem_setup_complete")
+        val PrinterVendorId = intPreferencesKey("totem_printer_vendor_id")
+        val PrinterProductId = intPreferencesKey("totem_printer_product_id")
     }
 }

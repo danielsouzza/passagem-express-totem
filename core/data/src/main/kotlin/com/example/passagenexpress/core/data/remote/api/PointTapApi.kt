@@ -17,7 +17,7 @@ import retrofit2.http.Path
  * IDs de order têm formato `ORD…` (string opaca, comprimento variável).
  */
 interface PointTapApi {
-    @POST("api/payments")
+    @POST("api/pagamentos/terminal  ")
     suspend fun criarOrder(
         @Body body: PointTapOrderRequestDto,
     ): ApiEnvelope<PointTapOrderResponseDto>

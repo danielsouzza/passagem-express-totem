@@ -18,6 +18,7 @@ import com.example.passagenexpress.core.domain.usecase.GerarPagamentoPixUseCase
 import com.example.passagenexpress.core.domain.usecase.ObterPointTapStatusUseCase
 import com.example.passagenexpress.core.domain.usecase.ObterStatusPedidoUseCase
 import com.example.passagenexpress.core.domain.model.TipoDocumento
+import com.example.passagenexpress.core.domain.model.precoBaseComDesconto
 import com.example.passagenexpress.feature.passenger.format.DocumentoMask
 import com.example.passagenexpress.feature.passenger.format.PhoneMask
 import com.example.passagenexpress.feature.payment.navigation.decodeSaleArg
@@ -434,8 +435,7 @@ class PaymentViewModel @Inject constructor(
 
     private fun initialState(): PaymentUiState {
         val taxa = trecho.taxaDeEmbarque
-        val valorBase = trecho.valor
-        val totalPassagens = passageiros.sumOf { p -> p.comodo.valor ?: valorBase }
+        val totalPassagens = passageiros.sumOf { p -> trecho.precoBaseComDesconto(p.comodo.valor) }
         val totalTaxas = passageiros.size * taxa
         // Totem coleta menos campos que a web: não há mais o bloco "Dados para Contato" nem o
         // checkbox `isContact` — o passageiro #1 vira o contato por convenção.
@@ -496,7 +496,7 @@ class PaymentViewModel @Inject constructor(
                 comodoId = p.comodo.id,
                 tipoComodidadeId = p.comodo.tipoComodidadeId,
                 passageiro = domain,
-                valor = p.comodo.valor ?: trecho.valor,
+                valor = trecho.precoBaseComDesconto(p.comodo.valor),
                 taxaEmbarque = trecho.taxaDeEmbarque,
                 descontoId = descontoId,
                 isContact = index == 0,

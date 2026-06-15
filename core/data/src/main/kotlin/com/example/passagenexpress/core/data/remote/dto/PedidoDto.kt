@@ -2,6 +2,7 @@ package com.example.passagenexpress.core.data.remote.dto
 
 import com.example.passagenexpress.core.data.remote.parse.parseLocalDateTime
 import com.example.passagenexpress.core.data.remote.parse.parseMoney
+import com.example.passagenexpress.core.domain.model.PassagemPedido
 import com.example.passagenexpress.core.domain.model.Pedido
 import com.example.passagenexpress.core.domain.model.PedidoStatus
 import com.example.passagenexpress.core.domain.repository.NovoPedido
@@ -28,8 +29,45 @@ fun PedidoDto.toDomain(): Pedido = Pedido(
     criadoEm = createdAt.parseLocalDateTime() ?: LocalDateTime.now(),
 )
 
+/**
+ * Resposta de `GET api/pedidos/{id}/status`. Quando `status == "Pago"`, o backend devolve
+ * o pedido completo, incluindo `passagens_agrupadas[].passagem_pedidos[]` — de onde sai o
+ * `passageiro_viagem_id` de cada passagem (usado na rota `bilhete-mapeado`). Só lemos o que
+ * interessa; o resto do pedido é ignorado (ignoreUnknownKeys).
+ */
 @Serializable
-data class StatusResponseDto(val status: String? = null)
+data class StatusResponseDto(
+    val status: String? = null,
+    @SerialName("passagens_agrupadas") val passagensAgrupadas: List<PassagemAgrupadaDto> = emptyList(),
+)
+
+@Serializable
+data class PassagemAgrupadaDto(
+    @SerialName("passagem_pedidos") val passagemPedidos: List<PassagemPedidoDto> = emptyList(),
+)
+
+@Serializable
+data class PassagemPedidoDto(
+    val id: Long? = null,
+    // É este o id da rota `passagens/{id}/bilhete-mapeado` (ex.: 813973), não o `id` do
+    // passagem_pedido. Fallback pra `id` só por segurança.
+    @SerialName("passageiro_viagem_id") val passageiroViagemId: Long? = null,
+    val passageiro: PassageiroRefDto? = null,
+)
+
+@Serializable
+data class PassageiroRefDto(
+    val nome: String? = null,
+)
+
+/** Extrai as passagens (com `passageiro_viagem_id`) da resposta de status quando pago. */
+fun StatusResponseDto.toPassagens(): List<PassagemPedido> =
+    passagensAgrupadas
+        .flatMap { it.passagemPedidos }
+        .mapNotNull { pp ->
+            val pvId = pp.passageiroViagemId ?: pp.id ?: return@mapNotNull null
+            PassagemPedido(id = pvId, passageiroNome = pp.passageiro?.nome.orEmpty())
+        }
 
 fun parsePedidoStatus(raw: String?): PedidoStatus = when (raw?.lowercase()) {
     "pago", "approved", "aprovado" -> PedidoStatus.Pago

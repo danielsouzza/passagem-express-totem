@@ -37,7 +37,9 @@ data class TrechoDto(
 @Serializable
 data class DescontoDto(
     val id: Long,
-    val desconto: String? = null,
+    /** Backend manda número (ex: `90` = R$ 90 off). É um valor absoluto a subtrair do `valor`. */
+    val desconto: Double? = null,
+    val nome: String? = null,
 )
 
 @Serializable
@@ -87,7 +89,7 @@ fun TrechoDto.toDomain(): Trecho {
         tiposComodos = tiposComodos.map { TipoComodo(it.id, it.nome) },
         municipioOrigem = municipioOrigem?.toDomain() ?: Municipio(slug = "", nome = ""),
         municipioDestino = municipioDestino?.toDomain() ?: Municipio(slug = "", nome = ""),
-        desconto = desconto?.let { Desconto(id = it.id, valor = it.desconto.parseMoney()) },
+        desconto = desconto?.let { Desconto(id = it.id, valor = it.desconto ?: 0.0, nome = it.nome) },
     )
 }
 

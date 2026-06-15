@@ -16,6 +16,8 @@ import com.example.passagenexpress.feature.passenger.navigation.passengerRoute
 import com.example.passagenexpress.feature.passenger.navigation.passengerScreen
 import com.example.passagenexpress.feature.payment.navigation.paymentRoute
 import com.example.passagenexpress.feature.payment.navigation.paymentScreen
+import com.example.passagenexpress.feature.print.navigation.printRoute
+import com.example.passagenexpress.feature.print.navigation.printScreen
 import com.example.passagenexpress.feature.room.navigation.roomRoute
 import com.example.passagenexpress.feature.room.navigation.roomScreen
 import com.example.passagenexpress.feature.setup.navigation.SETUP_ROUTE
@@ -114,16 +116,23 @@ fun TotemNavHost(
             },
         )
         paymentScreen(
-            // Pagamento aprovado: limpa toda a pilha da compra e volta pro Idle.
-            // (Próximo passo: passar pelo :feature:confirm em vez de ir direto pro Idle.)
-            onPaid = {
-                navController.navigate(IDLE_ROUTE) {
-                    popUpTo(IDLE_ROUTE) { inclusive = false }
+            // Pagamento aprovado: segue pra etapa de impressão dos bilhetes (última do fluxo).
+            onPaid = { approved ->
+                navController.navigate(printRoute(approved.pedidoId)) {
                     launchSingleTop = true
                 }
             },
             onBack = {
                 navController.popBackStack()
+            },
+        )
+        printScreen(
+            // Bilhetes impressos (ou cliente concluiu): limpa a pilha da compra e volta pro Idle.
+            onFinished = {
+                navController.navigate(IDLE_ROUTE) {
+                    popUpTo(IDLE_ROUTE) { inclusive = false }
+                    launchSingleTop = true
+                }
             },
         )
     }

@@ -48,6 +48,7 @@ dependencies {
     implementation(project(":core:data"))
     implementation(project(":core:datastore"))
     implementation(project(":core:network"))
+    implementation(project(":core:printer"))
 
     implementation(project(":feature:setup"))
     implementation(project(":feature:idle"))
@@ -57,6 +58,7 @@ dependencies {
     implementation(project(":feature:room"))
     implementation(project(":feature:passenger"))
     implementation(project(":feature:payment"))
+    implementation(project(":feature:print"))
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)

@@ -9,6 +9,9 @@ data class TotemConfig(
     val municipioNome: String,
     val defaultLanguage: AppLanguage,
     val setupComplete: Boolean,
+    /** VID/PID da impressora USB escolhida no setup; null = não configurada. */
+    val printerVendorId: Int? = null,
+    val printerProductId: Int? = null,
 ) {
     companion object {
         val Empty = TotemConfig(
@@ -20,6 +23,8 @@ data class TotemConfig(
             municipioNome = "",
             defaultLanguage = AppLanguage.PtBr,
             setupComplete = false,
+            printerVendorId = null,
+            printerProductId = null,
         )
     }
 }

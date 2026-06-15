@@ -80,6 +80,7 @@ import com.example.passagenexpress.core.designsystem.theme.TotemTheme
 import com.example.passagenexpress.core.domain.model.Municipio
 import com.example.passagenexpress.core.domain.model.TipoComodo
 import com.example.passagenexpress.core.domain.model.Trecho
+import com.example.passagenexpress.core.domain.model.precoBaseComDesconto
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalTime
@@ -707,7 +708,9 @@ private fun TripCard(
     val chipBg = if (selected) TotemPalette.Accent else TotemPalette.AccentTint
     val chipFg = if (selected) TotemPalette.Paper else TotemPalette.Accent
     val type = vesselType(trecho.embarcacao)
-    val priceTotal = trecho.valor + trecho.taxaDeEmbarque
+    val priceWithDiscount = trecho.precoBaseComDesconto() + trecho.taxaDeEmbarque
+    val priceOriginal = trecho.valor + trecho.taxaDeEmbarque
+    val hasDiscount = trecho.desconto != null && trecho.desconto!!.valor > 0
 
     Surface(
         modifier = Modifier
@@ -757,7 +760,10 @@ private fun TripCard(
                 label = stringRes(R.string.trip_label_duration),
             )
             VerticalDivider()
-            PriceStat(value = formatMoney(priceTotal))
+            PriceStat(
+                value = formatMoney(priceWithDiscount),
+                originalValue = if (hasDiscount) formatMoney(priceOriginal) else null,
+            )
         }
     }
 }
@@ -795,8 +801,18 @@ private fun TimeStat(value: String, label: String) {
 }
 
 @Composable
-private fun PriceStat(value: String) {
+private fun PriceStat(value: String, originalValue: String? = null) {
     Column(horizontalAlignment = Alignment.End) {
+        if (originalValue != null) {
+            Text(
+                text = originalValue,
+                style = MaterialTheme.typography.labelMedium.copy(
+                    fontWeight = FontWeight.Medium,
+                    textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough,
+                ),
+                color = TotemPalette.InkMuted,
+            )
+        }
         Text(
             text = value,
             style = MaterialTheme.typography.titleLarge.copy(

@@ -1,0 +1,82 @@
+name: Android Release
+
+# Toda atualização na main gera um APK de release assinado e publica uma Release do GitHub.
+#
+# Segredos necessários (Settings → Secrets and variables → Actions):
+#   RELEASE_KEYSTORE_BASE64   base64 da keystore de produção (../environment/passagenexpress.keystore)
+#   RELEASE_KEYSTORE_PASSWORD senha da keystore (PKCS12 exige a mesma senha pra store e pra key)
+#   RELEASE_KEY_ALIAS         alias da chave dentro da keystore
+#   PASSAGENEXPRESS_API_TOKEN valor de passagenexpress.apiToken (header X-API-KEY do backend)
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+
+      # Remonta a keystore a partir dos secrets, no caminho que o app/build.gradle.kts
+      # espera: <workspace>/../environment/ (ver rootProject.file(...) lá).
+      - name: Preparar assinatura
+        env:
+          KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+        run: |
+          mkdir -p "$RUNNER_WORKSPACE/environment"
+          echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_WORKSPACE/environment/passagenexpress.keystore"
+          cat > "$RUNNER_WORKSPACE/environment/passagenexpress-key.properties" <<EOF
+          storePassword=$KEYSTORE_PASSWORD
+          keyPassword=$KEYSTORE_PASSWORD
+          keyAlias=$KEY_ALIAS
+          storeFile=../../environment/passagenexpress.keystore
+          EOF
+
+      # run_number é monotônico entre execuções desta action, então serve como build
+      # number e garante uma tag/nome de arquivo únicos por build.
+      - name: Resolver versão
+        id: versao
+        run: |
+          BUILD=${{ github.run_number }}
+          echo "build=$BUILD" >> "$GITHUB_OUTPUT"
+          echo "tag=build-$BUILD" >> "$GITHUB_OUTPUT"
+          echo "arquivo=passagenexpress-$BUILD.apk" >> "$GITHUB_OUTPUT"
+
+      - name: Build do APK
+        env:
+          API_TOKEN: ${{ secrets.PASSAGENEXPRESS_API_TOKEN }}
+        run: |
+          chmod +x ./gradlew
+          ./gradlew :app:assembleRelease -Ppassagenexpress.apiToken="$API_TOKEN"
+          # Dois nomes para o mesmo APK: o versionado guarda o histórico, e o "latest"
+          # sustenta um link fixo para a página de download, servido pela rota
+          # /releases/latest/download/ do GitHub.
+          cp app/build/outputs/apk/release/app-release.apk "${{ steps.versao.outputs.arquivo }}"
+          cp app/build/outputs/apk/release/app-release.apk passagenexpress-latest.apk
+
+      - name: Publicar Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.versao.outputs.tag }}
+          name: Passagem Express (build ${{ steps.versao.outputs.build }})
+          body: |
+            Commit: ${{ github.sha }}
+
+            Link fixo para download (sempre a versão mais recente):
+            https://github.com/${{ github.repository }}/releases/latest/download/passagenexpress-latest.apk
+          files: |
+            ${{ steps.versao.outputs.arquivo }}
+            passagenexpress-latest.apk
+          fail_on_unmatched_files: true

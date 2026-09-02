@@ -1,8 +1,19 @@
+import java.io.FileInputStream
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
+}
+
+// Keystore de produção vive fora do repositório, em ../environment (pasta compartilhada
+// com outros apps do totem). No CI é reconstruído a partir de secrets antes do build.
+val releaseKeystoreProperties = Properties()
+val releaseKeystorePropertiesFile = rootProject.file("../environment/passagenexpress-key.properties")
+if (releaseKeystorePropertiesFile.exists()) {
+    releaseKeystoreProperties.load(FileInputStream(releaseKeystorePropertiesFile))
 }
 
 android {
@@ -23,9 +34,35 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        getByName("debug") {
+            storeFile = file("${System.getProperty("user.home")}/.android/debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+        // Só existe quando ../environment/passagenexpress-key.properties está disponível
+        // (máquina de dev com acesso à pasta compartilhada, ou CI reconstruindo do secret).
+        // Sem isso, o release cai para a debug key — dev sem a keystore não fica travado.
+        if (releaseKeystorePropertiesFile.exists()) {
+            create("release") {
+                storeFile = file(releaseKeystoreProperties["storeFile"] as String)
+                storePassword = releaseKeystoreProperties["storePassword"] as String
+                keyAlias = releaseKeystoreProperties["keyAlias"] as String
+                keyPassword = releaseKeystoreProperties["keyPassword"] as String
+            }
+        }
+    }
+
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
+            signingConfig = if (releaseKeystorePropertiesFile.exists()) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -59,6 +96,7 @@ dependencies {
     implementation(project(":feature:passenger"))
     implementation(project(":feature:payment"))
     implementation(project(":feature:print"))
+    implementation(project(":feature:settings"))
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)

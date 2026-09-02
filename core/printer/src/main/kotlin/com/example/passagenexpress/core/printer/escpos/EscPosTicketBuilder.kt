@@ -1,20 +1,31 @@
 package com.example.passagenexpress.core.printer.escpos
 
 import com.example.passagenexpress.core.domain.model.BilheteMapeado
+import com.example.passagenexpress.core.domain.model.PaperWidth
 import com.example.passagenexpress.core.printer.escpos.EscPosWriter.Align
-import com.example.passagenexpress.core.printer.escpos.EscPosWriter.Companion.COLUMNS
 
 /**
- * Monta os bytes ESC/POS de um bilhete, espelhando o layout do bilhete real
- * (`app/bilhete-1740205.pdf`): cabeçalho da agência/empresa, embarcação, trecho, embarque,
- * viagem, tabela de valores, formas de pagamento, passageiros, número do BP-e, PDF417,
- * código de barras textual, validação, tributos e observações.
+ * Monta os bytes ESC/POS de um bilhete, espelhando o layout impresso pela web
+ * (`feature/print/bilhete-814073 (1).pdf`): logomarca, cabeçalho da agência/empresa, embarcação,
+ * trecho, embarque, viagem, tabela de valores, formas de pagamento, passageiros, número do BP-e,
+ * PDF417, validação, tributos e observações.
  */
 internal object EscPosTicketBuilder {
 
-    fun build(bilhete: BilheteMapeado): ByteArray {
-        val w = EscPosWriter()
+    /**
+     * @param logoRaster bytes ESC/POS da logomarca já rasterizada (baixada pelo printer), ou null.
+     * @param paper largura da bobina — define colunas do texto e largura do raster.
+     */
+    fun build(
+        bilhete: BilheteMapeado,
+        logoRaster: ByteArray? = null,
+        paper: PaperWidth = PaperWidth.MM58,
+    ): ByteArray {
+        val w = EscPosWriter(columns = paper.columns)
         w.reset()
+
+        // --- Logomarca (topo) ---
+        logoRaster?.let { w.align(Align.CENTER).raw(it).feed(1) }
 
         // --- Agência ---
         w.align(Align.CENTER).bold(true)
@@ -36,14 +47,16 @@ internal object EscPosTicketBuilder {
         w.sep()
 
         // --- Embarcação (destaque) ---
+        // Altura dupla só (largura normal): mantém o realce sem estourar as 16 colunas que o
+        // dobro de largura deixaria, e quebra em linha quando o nome é longo.
         bilhete.embarcacao.nome.ifBlankNull()?.let {
-            w.align(Align.CENTER).bold(true).size(width = 2, height = 2)
-            w.line(it)
+            w.align(Align.CENTER).bold(true).size(width = 1, height = 2)
+            w.lineWrapped(it)
             w.size().bold(false)
         }
 
         // --- Trecho / Embarque ---
-        w.align(Align.LEFT)
+        w.align(Align.CENTER)
         bilhete.trecho.portoOrigem.ifBlankNull()?.let { w.lineWrapped("Porto: $it") }
         w.lineWrapped("Origem: ${bilhete.trecho.municipioOrigem}")
         w.lineWrapped("Destino: ${bilhete.trecho.municipioDestino}")
@@ -65,12 +78,14 @@ internal object EscPosTicketBuilder {
 
         // --- Formas de pagamento ---
         if (bilhete.formasPagamento.isNotEmpty()) {
+            w.row("FORMA PAGAMENTO", "VALOR PAGO R$")
             bilhete.formasPagamento.forEach { (forma, valor) -> w.row(forma, valor) }
             bilhete.troco.ifBlankNull()?.let { w.row("Troco", it) }
             w.sep()
         }
 
         // --- Passageiros ---
+        w.align(Align.CENTER)
         bilhete.passageiros.forEach { w.lineWrapped(it) }
         if (bilhete.passageiros.isNotEmpty()) w.line()
 
@@ -80,10 +95,11 @@ internal object EscPosTicketBuilder {
         }
 
         // --- PDF417 ---
-        Pdf417Raster.toRaster(bilhete.pdf417)?.let {
+        // `codigoBarras` (ex.: "PDF417: Yjara Viagens-814073-") é só o rótulo/fonte do barcode;
+        // a web não o imprime como texto, então aqui também não — imprimimos só a imagem.
+        Pdf417Raster.toRaster(bilhete.pdf417, paper.dots)?.let {
             w.align(Align.CENTER).feed(1).raw(it).feed(1)
         }
-        bilhete.codigoBarras.ifBlankNull()?.let { w.align(Align.CENTER).lineWrapped(it) }
 
         // --- Validação / Tributos ---
         w.align(Align.CENTER)
@@ -92,7 +108,7 @@ internal object EscPosTicketBuilder {
 
         // --- Observações ---
         if (bilhete.observacoes.isNotEmpty()) {
-            w.align(Align.LEFT).line()
+            w.align(Align.CENTER).line()
             bilhete.observacoes.forEach { w.lineWrapped(it) }
         }
 
@@ -101,8 +117,8 @@ internal object EscPosTicketBuilder {
     }
 
     /** Ticket de teste curto (botão "Testar impressão" no setup). */
-    fun buildTest(): ByteArray {
-        val w = EscPosWriter()
+    fun buildTest(paper: PaperWidth = PaperWidth.MM58): ByteArray {
+        val w = EscPosWriter(columns = paper.columns)
         w.reset()
         w.align(Align.CENTER).bold(true).size(2, 2).line("TESTE")
         w.size().bold(false)
@@ -117,26 +133,26 @@ internal object EscPosTicketBuilder {
         return w.bytes()
     }
 
-    // ---- helpers de layout (32 colunas) ----
+    // ---- helpers de layout (adaptam-se às colunas da bobina) ----
 
-    /** Linha "label .... valor" preenchida até [COLUMNS]. */
+    /** Linha "label .... valor" preenchida até a largura ([EscPosWriter.columns]). */
     private fun EscPosWriter.row(label: String, value: String): EscPosWriter {
         val v = value.trim()
-        val space = (COLUMNS - label.length - v.length).coerceAtLeast(1)
+        val space = (columns - label.length - v.length).coerceAtLeast(1)
         return line(label + " ".repeat(space) + v)
     }
 
     private fun EscPosWriter.sep(): EscPosWriter =
-        align(Align.LEFT).line("-".repeat(COLUMNS))
+        align(Align.LEFT).line("-".repeat(columns))
 
-    /** Quebra texto em linhas de no máximo [COLUMNS] respeitando palavras. */
+    /** Quebra texto em linhas de no máximo [EscPosWriter.columns] respeitando palavras. */
     private fun EscPosWriter.lineWrapped(text: String): EscPosWriter {
         val words = text.trim().split(Regex("\\s+"))
         val sb = StringBuilder()
         for (word in words) {
             when {
                 sb.isEmpty() -> sb.append(word)
-                sb.length + 1 + word.length <= COLUMNS -> sb.append(' ').append(word)
+                sb.length + 1 + word.length <= columns -> sb.append(' ').append(word)
                 else -> {
                     line(sb.toString())
                     sb.setLength(0)
@@ -144,9 +160,9 @@ internal object EscPosTicketBuilder {
                 }
             }
             // Palavra maior que a linha: quebra dura.
-            while (sb.length > COLUMNS) {
-                line(sb.substring(0, COLUMNS))
-                val rest = sb.substring(COLUMNS)
+            while (sb.length > columns) {
+                line(sb.substring(0, columns))
+                val rest = sb.substring(columns)
                 sb.setLength(0)
                 sb.append(rest)
             }

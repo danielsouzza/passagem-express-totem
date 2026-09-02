@@ -28,9 +28,12 @@ class PointTapRepositoryImpl @Inject constructor(
             is AppResult.Failure -> r
         }
 
-    override suspend fun obterStatus(orderId: String): AppResult<PointTapPaymentResult> =
-        callEnvelope({ api.obterStatus(orderId) }) { it.toDomain() }
+    override suspend fun obterStatus(pedidoId: Long): AppResult<PointTapPaymentResult> =
+        callEnvelope({ api.obterStatus(pedidoId) }) { it.toDomain() }
 
-    override suspend fun cancelarOrder(orderId: String): AppResult<Unit> =
-        callEnvelope({ api.cancelarOrder(orderId) }) { }
+    override suspend fun cancelarOrder(pedidoId: Long): AppResult<Unit> =
+        callEnvelope({ api.cancelarOrder(pedidoId) }) { }
+
+    override suspend fun reembolsarOrder(pedidoId: Long): AppResult<Unit> =
+        callEnvelope({ api.refundOrder(pedidoId) }) { }
 }

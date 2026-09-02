@@ -7,6 +7,8 @@ import com.example.passagenexpress.core.domain.model.PointTapPaymentResult
 
 interface PointTapRepository {
     suspend fun criarOrder(input: NovaPointTapOrder): AppResult<PointTapOrder>
-    suspend fun obterStatus(orderId: String): AppResult<PointTapPaymentResult>
-    suspend fun cancelarOrder(orderId: String): AppResult<Unit>
+    // status/cancel/refund são chaveados pelo id do PEDIDO (não pelo id da order/intent).
+    suspend fun obterStatus(pedidoId: Long): AppResult<PointTapPaymentResult>
+    suspend fun cancelarOrder(pedidoId: Long): AppResult<Unit>
+    suspend fun reembolsarOrder(pedidoId: Long): AppResult<Unit>
 }

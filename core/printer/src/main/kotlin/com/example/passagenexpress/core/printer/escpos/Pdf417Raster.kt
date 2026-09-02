@@ -20,8 +20,26 @@ internal object Pdf417Raster {
     fun toRaster(dataUri: String?, maxWidth: Int = MAX_WIDTH): ByteArray? {
         if (dataUri.isNullOrBlank()) return null
         val bitmap = decode(dataUri) ?: return null
-        val scaled = scaleToWidth(bitmap, maxWidth)
+        // PDF417: só reduz (nunca amplia) — ampliar borraria o código de barras.
+        val scaled = scaleToWidth(bitmap, maxWidth, allowUpscale = false)
         return rasterize(scaled)
+    }
+
+    /**
+     * Converte um PNG/JPG cru (ex.: logomarca baixada por HTTP) em raster ESC/POS.
+     * @param upscale se true, amplia imagens menores que [maxWidth] até essa largura (usado no
+     *   logo, que costuma vir pequeno do backend). Barcodes NÃO devem ampliar.
+     * @return bytes prontos, ou null se não decodificar.
+     */
+    fun toRasterFromBytes(
+        bytes: ByteArray?,
+        maxWidth: Int = MAX_WIDTH,
+        upscale: Boolean = false,
+    ): ByteArray? {
+        if (bytes == null || bytes.isEmpty()) return null
+        val bitmap = runCatching { BitmapFactory.decodeByteArray(bytes, 0, bytes.size) }.getOrNull()
+            ?: return null
+        return rasterize(scaleToWidth(bitmap, maxWidth, allowUpscale = upscale))
     }
 
     private fun decode(dataUri: String): Bitmap? = runCatching {
@@ -31,11 +49,14 @@ internal object Pdf417Raster {
         BitmapFactory.decodeByteArray(raw, 0, raw.size)
     }.getOrNull()
 
-    private fun scaleToWidth(src: Bitmap, maxWidth: Int): Bitmap {
-        if (src.width <= maxWidth) return src
+    private fun scaleToWidth(src: Bitmap, maxWidth: Int, allowUpscale: Boolean): Bitmap {
+        if (src.width == maxWidth) return src
+        // Sem ampliar: imagem já cabe → mantém.
+        if (!allowUpscale && src.width < maxWidth) return src
         val ratio = maxWidth.toFloat() / src.width
         val height = (src.height * ratio).toInt().coerceAtLeast(1)
-        return Bitmap.createScaledBitmap(src, maxWidth, height, false)
+        // Ampliação (logo) usa filtro bilinear pra suavizar; redução mantém nearest.
+        return Bitmap.createScaledBitmap(src, maxWidth, height, allowUpscale)
     }
 
     private fun rasterize(bitmap: Bitmap): ByteArray {

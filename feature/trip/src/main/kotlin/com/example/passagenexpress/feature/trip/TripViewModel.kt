@@ -45,10 +45,6 @@ class TripViewModel @Inject constructor(
         viewModelScope.launch { search() }
     }
 
-    fun onSelectTrip(trecho: Trecho) {
-        _uiState.update { it.copy(selectedTrechoId = trecho.id) }
-    }
-
     fun onPreviousDate() {
         changeDate(_uiState.value.date.minusDays(1))
     }
@@ -62,7 +58,6 @@ class TripViewModel @Inject constructor(
         _uiState.update {
             it.copy(
                 date = proxima.dataEmbarque,
-                selectedTrechoId = null,
                 trips = TripsState.Loading,
             )
         }
@@ -75,7 +70,25 @@ class TripViewModel @Inject constructor(
         viewModelScope.launch { search() }
     }
 
-    fun onOpenFilters() {
+    /** Modal só de data — não precisa de rede. */
+    fun onOpenDateFilter() {
+        val current = _uiState.value
+        _uiState.update {
+            it.copy(
+                filterSheet = FilterSheetState.Open(
+                    mode = FilterMode.Date,
+                    destinations = emptyList(),
+                    selectedDestinoSlug = destinoSlug,
+                    selectedDestinoNome = current.destinoNome,
+                    selectedDate = current.date,
+                    visibleMonth = YearMonth.from(current.date),
+                )
+            )
+        }
+    }
+
+    /** Modal só de destino — carrega a lista de destinos do porto/origem. */
+    fun onOpenDestinoFilter() {
         val current = _uiState.value
         _uiState.update { it.copy(filterSheet = FilterSheetState.Loading) }
         viewModelScope.launch {
@@ -90,6 +103,7 @@ class TripViewModel @Inject constructor(
             _uiState.update {
                 it.copy(
                     filterSheet = FilterSheetState.Open(
+                        mode = FilterMode.Destino,
                         destinations = destinations,
                         selectedDestinoSlug = destinoSlug,
                         selectedDestinoNome = current.destinoNome,
@@ -145,8 +159,9 @@ class TripViewModel @Inject constructor(
         _uiState.update {
             it.copy(
                 date = open.selectedDate,
+                // Ao filtrar, busca a data escolhida (padrão hoje) + destino — sai do irrestrito.
+                dataIrrestrita = false,
                 destinoNome = open.selectedDestinoNome,
-                selectedTrechoId = null,
                 trips = TripsState.Loading,
                 filterSheet = FilterSheetState.Hidden,
             )
@@ -158,7 +173,7 @@ class TripViewModel @Inject constructor(
     private fun changeDate(newDate: LocalDate) {
         if (newDate == _uiState.value.date) return
         _uiState.update {
-            it.copy(date = newDate, selectedTrechoId = null, trips = TripsState.Loading)
+            it.copy(date = newDate, trips = TripsState.Loading)
         }
         searchJob?.cancel()
         searchJob = viewModelScope.launch { search() }
@@ -176,6 +191,8 @@ class TripViewModel @Inject constructor(
             municipioOrigemCodigo = null,
             municipioDestinoSlug = destinoSlug.ifEmpty { null },
             data = _uiState.value.date,
+            dataIrrestrita = _uiState.value.dataIrrestrita,
+            embarcacaoId = config.embarcacaoId,
         )
         when (val result = buscarViagens(filtros)) {
             is AppResult.Success -> _uiState.update {

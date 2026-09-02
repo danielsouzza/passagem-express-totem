@@ -23,5 +23,8 @@ data class ItemPedido(
     val descontoId: Long? = null,
     val isContact: Boolean = false,
     val comodoRelacionado: Long? = null,
+    /** Capacidade física do camarote (no pivô); 1 nos filhos e em cômodos simples. */
     val comodosFilhos: Int = 1,
+    /** Ocupantes efetivos do camarote (no pivô); 1 nos filhos e em cômodos simples. */
+    val qtdComodosFilhos: Int = 1,
 )

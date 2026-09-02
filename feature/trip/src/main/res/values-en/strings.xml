@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="trip_title">Choose your trip</string>
+    <string name="trip_subtitle_route">%1$s → %2$s</string>
+    <string name="trip_subtitle_origin">Departing from %1$s</string>
+    <string name="trip_loading">Searching trips…</string>
+    <string name="trip_error_title">Failed to load trips</string>
+    <string name="trip_empty_title">No trips on this date</string>
+    <string name="trip_empty_message">There are no trips available for the selected date.</string>
+    <string name="trip_next_available_title">Next available trip</string>
+    <string name="trip_next_available_action">See the next date</string>
+    <string name="trip_retry">Try again</string>
+    <string name="trip_back">Back</string>
+    <string name="trip_continue">Continue</string>
+    <string name="trip_minutes">min</string>
+    <string name="trip_seats_format">%1$d seats</string>
+    <string name="trip_free_seating">Open seating</string>
+    <string name="trip_assigned_seating">Assigned seat</string>
+    <string name="trip_prev_date">Previous date</string>
+    <string name="trip_next_date">Next date</string>
+    <string name="trip_label_departure">Departure</string>
+    <string name="trip_label_arrival">Arrival</string>
+    <string name="trip_label_duration">Duration</string>
+    <string name="trip_label_per_person">Per person</string>
+    <string name="trip_label_pix">With Pix</string>
+    <string name="trip_filter_title">Change filters</string>
+    <string name="trip_filter_date_title">Filter by date</string>
+    <string name="trip_filter_destino_title">Filter by destination</string>
+    <string name="trip_filter_upcoming">Upcoming</string>
+    <string name="trip_filter_destination">Destination</string>
+    <string name="trip_filter_all_destinations">All destinations</string>
+    <string name="trip_filter_date">Date</string>
+    <string name="trip_filter_loading">Loading destinations…</string>
+    <string name="trip_filter_apply">Apply</string>
+    <string name="trip_filter_cancel">Cancel</string>
+    <string name="trip_filter_destinations_empty">No destinations available.</string>
+</resources>

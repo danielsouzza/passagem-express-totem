@@ -33,14 +33,86 @@ class PassengerViewModel @Inject constructor(
     private val rawTrechoArg: String = savedStateHandle.get<String>(ARG_TRECHO).orEmpty()
 
     private val _uiState = MutableStateFlow(
-        PassengerUiState(
-            trechoId = inicioVenda.trechoId,
-            forms = inicioVenda.comodos.map { comodo ->
-                PassageiroForm(comodo = comodo)
-            },
-        )
+        run {
+            val forms = inicioVenda.comodos.map { comodo -> PassageiroForm(comodo = comodo) }
+            PassengerUiState(
+                trechoId = inicioVenda.trechoId,
+                forms = forms,
+                // Ao entrar, já abre o modal guiado no passo do documento, com o teclado pronto.
+                modalStep = if (forms.isEmpty()) null else PassengerModalStep.Documento,
+                keypadField = if (forms.isEmpty()) null else KeypadField.Documento(0),
+            )
+        }
     )
     val uiState: StateFlow<PassengerUiState> = _uiState.asStateFlow()
+
+    /** Reabre o modal guiado (a partir do documento) do passageiro ativo — ex.: tocar no campo doc. */
+    fun onOpenDocModal() = _uiState.update {
+        it.copy(modalStep = PassengerModalStep.Documento, keypadField = KeypadField.Documento(it.activeIndex))
+    }
+
+    fun onCloseModal() = _uiState.update { it.copy(modalStep = null, keypadField = null) }
+
+    /**
+     * "Próximo/Concluir" do modal. Valida o campo do passo atual; se ok avança:
+     * Documento → dispara a busca no backend (o resultado decide: achou = fecha e preenche o form;
+     * não achou = segue para Nome); Nome → Telefone → Nascimento → fecha o modal.
+     */
+    fun onModalNext() {
+        val state = _uiState.value
+        val step = state.modalStep ?: return
+        val idx = state.activeIndex
+        val form = state.forms.getOrNull(idx) ?: return
+        when (step) {
+            PassengerModalStep.Documento -> {
+                val rawDoc = DocumentoMask.digitsOnly(form.documentoDisplay, form.tipoDocumento)
+                if (!DocumentoMask.isValid(rawDoc, form.tipoDocumento)) {
+                    setActiveError { it.copy(documento = if (rawDoc.isEmpty()) ERROR_DOC_REQUIRED else ERROR_DOC_INVALID) }
+                    return
+                }
+                lookupPassageiro(idx, form.tipoDocumento, rawDoc, fromModal = true)
+            }
+            PassengerModalStep.Nome -> {
+                if (form.nome.trim().length < 2) {
+                    setActiveError { it.copy(nome = ERROR_NAME_REQUIRED) }
+                    return
+                }
+                goToStep(PassengerModalStep.Telefone, idx)
+            }
+            PassengerModalStep.Telefone -> {
+                val phone = PhoneMask.digitsOnly(form.telefoneDisplay)
+                if (phone.length !in 10..11) {
+                    setActiveError { it.copy(telefone = if (phone.isEmpty()) ERROR_PHONE_REQUIRED else ERROR_PHONE_INVALID) }
+                    return
+                }
+                goToStep(PassengerModalStep.Nascimento, idx)
+            }
+            PassengerModalStep.Nascimento -> {
+                val dateDigits = BirthdateMask.digitsOnly(form.nascimentoDisplay)
+                if (dateDigits.isEmpty() || parseBirthdate(form.nascimentoDisplay) == null) {
+                    setActiveError { it.copy(nascimento = if (dateDigits.isEmpty()) ERROR_BIRTH_REQUIRED else ERROR_BIRTH_INVALID) }
+                    return
+                }
+                // Fecha o modal e mantém o passageiro ativo com o formulário inline preenchido,
+                // pra revisão/edição. O avanço pro próximo é explícito (botão "Próximo passageiro").
+                _uiState.update { it.copy(modalStep = null, keypadField = null) }
+            }
+        }
+    }
+
+    private fun goToStep(step: PassengerModalStep, idx: Int) = _uiState.update {
+        it.copy(modalStep = step, keypadField = keypadFieldFor(step, idx))
+    }
+
+    private fun keypadFieldFor(step: PassengerModalStep, idx: Int): KeypadField = when (step) {
+        PassengerModalStep.Documento -> KeypadField.Documento(idx)
+        PassengerModalStep.Nome -> KeypadField.Nome(idx)
+        PassengerModalStep.Telefone -> KeypadField.Telefone(idx)
+        PassengerModalStep.Nascimento -> KeypadField.Nascimento(idx)
+    }
+
+    private fun setActiveError(transform: (PassageiroFormErrors) -> PassageiroFormErrors) =
+        updateActiveForm { it.copy(errors = transform(it.errors)) }
 
     fun onChangeTipoDocumento(tipo: TipoDocumento) = updateActiveForm {
         it.copy(tipoDocumento = tipo, documentoDisplay = "", errors = it.errors.copy(documento = null))
@@ -50,19 +122,84 @@ class PassengerViewModel @Inject constructor(
         it.copy(nome = value, errors = it.errors.copy(nome = null))
     }
 
-    fun onSelectPassenger(index: Int) {
+    /**
+     * Ativa/expande o assento [index]. Se o documento está vazio, abre o modal guiado; se já tem
+     * dados, mostra o formulário inline preenchido (para edição campo a campo).
+     */
+    fun onEditPassenger(index: Int) {
         if (index !in _uiState.value.forms.indices) return
-        _uiState.update { it.copy(activeIndex = index, keypadField = null) }
+        _uiState.update { it.activateAt(index) }
     }
 
-    fun onPrev() {
-        if (!_uiState.value.canGoPrev) return
-        _uiState.update { it.copy(activeIndex = it.activeIndex - 1, keypadField = null) }
+    private fun PassengerUiState.activateAt(index: Int): PassengerUiState {
+        val docEmpty = forms.getOrNull(index)?.documentoDisplay.isNullOrEmpty()
+        return copy(
+            activeIndex = index,
+            modalStep = if (docEmpty) PassengerModalStep.Documento else null,
+            keypadField = if (docEmpty) KeypadField.Documento(index) else null,
+        )
     }
 
-    fun onNext() {
-        if (!_uiState.value.canGoNext) return
-        _uiState.update { it.copy(activeIndex = it.activeIndex + 1, keypadField = null) }
+    /**
+     * "Próximo passageiro" / "Avançar" (rodapé). Valida o assento ativo e ativa o próximo assento
+     * não removido; se for o último, envia. Ocupante extra vazio é marcado "vou sozinho" e o fluxo
+     * segue. Coexiste com os botões "Preencher dados" dos cards.
+     */
+    fun onAdvance() {
+        val state = _uiState.value
+        if (state.submitting) return
+        val idx = state.activeIndex
+        val form = state.forms.getOrNull(idx) ?: return onSubmit()
+        // Extra deixado em branco: marca como "vou sozinho" e segue.
+        if (state.isExtraOccupant(idx) && form.documentoDisplay.isBlank()) {
+            setSkipped(idx, true)
+            advanceFrom(idx)
+            return
+        }
+        val validated = validate(form)
+        if (!validated.errors.isEmpty()) {
+            updateActiveForm { validated }
+            return
+        }
+        _uiState.update { it.copy(forms = it.forms.setAt(idx, validated)) }
+        advanceFrom(idx)
+    }
+
+    /** Ativa o próximo assento não removido após [idx]; se não houver, envia. */
+    private fun advanceFrom(idx: Int) {
+        val next = _uiState.value.forms.indices.firstOrNull { it > idx && !_uiState.value.forms[it].skipped }
+        if (next != null) {
+            _uiState.update { it.activateAt(next) }
+        } else {
+            onSubmit()
+        }
+    }
+
+    private fun <T> List<T>.setAt(index: Int, value: T): List<T> =
+        mapIndexed { i, item -> if (i == index) value else item }
+
+    /**
+     * Marca um ocupante extra como "vou sozinho" — NÃO deleta o assento; vira um placeholder
+     * "removido" com opção de readicionar. Só extras podem ser removidos.
+     */
+    fun onRemovePassenger(index: Int) = setSkipped(index, true)
+
+    /** Remove o ocupante extra aberto no modal (botão "Vou sozinho" dentro do modal) e fecha. */
+    fun onRemoveActiveOccupant() {
+        val idx = _uiState.value.activeIndex
+        if (!_uiState.value.isExtraOccupant(idx)) return
+        setSkipped(idx, true)
+        _uiState.update { it.copy(modalStep = null, keypadField = null) }
+    }
+
+    /** Readiciona um ocupante extra antes removido (botão "Adicionar"). */
+    fun onRestoreOccupant(index: Int) = setSkipped(index, false)
+
+    private fun setSkipped(index: Int, skipped: Boolean) {
+        if (!_uiState.value.isExtraOccupant(index)) return
+        _uiState.update { state ->
+            state.copy(forms = state.forms.mapIndexed { i, f -> if (i == index) f.copy(skipped = skipped) else f })
+        }
     }
 
     fun onOpenKeypad(field: KeypadField) {
@@ -111,15 +248,24 @@ class PassengerViewModel @Inject constructor(
     }
 
     fun onSubmit() {
-        if (_uiState.value.submitting) return
-        val validatedForms = _uiState.value.forms.map { validate(it) }
+        val current = _uiState.value
+        if (current.submitting) return
+        // Descarta ocupantes extras removidos ("vou sozinho") e extras deixados totalmente em branco.
+        val kept = current.forms.filterIndexed { i, f ->
+            val extra = current.isExtraOccupant(i)
+            !(extra && (f.skipped || f.documentoDisplay.isBlank()))
+        }
+        val validatedForms = kept.map { validate(it) }
         val hasFormErrors = validatedForms.any { !it.errors.isEmpty() }
         if (hasFormErrors) {
-            val firstBadIdx = validatedForms.indexOfFirst { !it.errors.isEmpty() }
+            val firstBadIdx = validatedForms.indexOfFirst { !it.errors.isEmpty() }.coerceAtLeast(0)
             _uiState.update {
                 it.copy(
                     forms = validatedForms,
-                    activeIndex = firstBadIdx.coerceAtLeast(0),
+                    activeIndex = firstBadIdx,
+                    // Editor é o modal: reabre no passageiro com erro pra correção.
+                    modalStep = PassengerModalStep.Documento,
+                    keypadField = KeypadField.Documento(firstBadIdx),
                     erroGeral = null,
                 )
             }
@@ -146,6 +292,14 @@ class PassengerViewModel @Inject constructor(
     }
 
     /**
+     * Consome o evento one-shot de "passageiros concluídos" depois que a tela já navegou pra
+     * Payment. Sem isso, o StateFlow re-emite `completed` quando o usuário volta pra cá e o
+     * LaunchedEffect re-dispara a navegação, re-avançando sozinho. `submitting` volta a false
+     * pra que o botão "Avançar" continue funcional ao voltar.
+     */
+    fun onCompletedHandled() = _uiState.update { it.copy(completed = null, submitting = false) }
+
+    /**
      * Contato do pedido é derivado do passageiro #1 (paridade simplificada com `home.vue` —
      * web tem um bloco "Dados para Contato" dedicado, mas o totem coleta menos campos).
      * Email vai vazio; `PaymentViewModel.buildNovoPedido` já mapeia blank → null.
@@ -159,30 +313,45 @@ class PassengerViewModel @Inject constructor(
         )
     }
 
-    private fun lookupPassageiro(formIndex: Int, tipo: TipoDocumento, rawDoc: String) {
+    private fun lookupPassageiro(
+        formIndex: Int,
+        tipo: TipoDocumento,
+        rawDoc: String,
+        fromModal: Boolean = false,
+    ) {
         _uiState.update { it.copy(cpfLookupInFlight = true) }
         viewModelScope.launch {
             val result = buscarPassageiro(tipo, rawDoc)
             _uiState.update { state ->
                 val passageiro = (result as? AppResult.Success)?.value
                 if (passageiro == null) {
-                    state.copy(cpfLookupInFlight = false)
+                    // Não achou: no modal, segue guiando campo a campo (próximo = Nome).
+                    if (fromModal && state.modalStep == PassengerModalStep.Documento) {
+                        state.copy(
+                            cpfLookupInFlight = false,
+                            modalStep = PassengerModalStep.Nome,
+                            keypadField = KeypadField.Nome(formIndex),
+                        )
+                    } else {
+                        state.copy(cpfLookupInFlight = false)
+                    }
                 } else {
-                    state.copy(
-                        cpfLookupInFlight = false,
-                        forms = state.forms.mapIndexed { i, f ->
-                            if (i != formIndex) f else f.copy(
-                                nome = passageiro.nome.ifBlank { f.nome },
-                                telefoneDisplay = passageiro.telefone
-                                    .takeIf { it.isNotBlank() }
-                                    ?.let { PhoneMask.applyMask(it) }
-                                    ?: f.telefoneDisplay,
-                                nascimentoDisplay = passageiro.dataNascimento
-                                    ?.let { BirthdateMask.format(it) }
-                                    ?: f.nascimentoDisplay,
-                            )
-                        },
-                    )
+                    val forms = state.forms.mapIndexed { i, f ->
+                        if (i != formIndex) f else f.copy(
+                            nome = passageiro.nome.ifBlank { f.nome },
+                            telefoneDisplay = passageiro.telefone
+                                .takeIf { it.isNotBlank() }
+                                ?.let { PhoneMask.applyMask(it) }
+                                ?: f.telefoneDisplay,
+                            nascimentoDisplay = passageiro.dataNascimento
+                                ?.let { BirthdateMask.format(it) }
+                                ?: f.nascimentoDisplay,
+                        )
+                    }
+                    // Achou: preenche e, se veio do modal, fecha o modal e mostra o formulário inline
+                    // preenchido pra revisão/edição (SEM auto-avançar pro próximo passageiro).
+                    val filled = state.copy(cpfLookupInFlight = false, forms = forms)
+                    if (fromModal) filled.copy(modalStep = null, keypadField = null) else filled
                 }
             }
         }

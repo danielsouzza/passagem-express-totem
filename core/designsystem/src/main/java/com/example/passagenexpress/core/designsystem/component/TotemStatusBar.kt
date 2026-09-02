@@ -29,10 +29,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.passagenexpress.core.designsystem.R
 import com.example.passagenexpress.core.designsystem.theme.TotemPalette
 import com.example.passagenexpress.core.designsystem.theme.TotemTheme
 
@@ -139,7 +141,7 @@ private fun StepPill(current: Int, total: Int) {
             horizontalArrangement = Arrangement.spacedBy(TotemTheme.dimens.space8),
         ) {
             Text(
-                text = "ETAPA",
+                text = stringResource(R.string.totem_step_pill_label),
                 fontSize = 17.sp,
                 style = MaterialTheme.typography.labelSmall,
                 color = TotemPalette.InkMuted,
@@ -152,7 +154,7 @@ private fun StepPill(current: Int, total: Int) {
             )
             Text(
                 fontSize = 17.sp,
-                text = "de",
+                text = stringResource(R.string.totem_step_pill_of),
                 style = MaterialTheme.typography.labelSmall,
                 color = TotemPalette.InkMuted,
             )
@@ -236,7 +238,7 @@ private fun LanguageToggle(
 
 @Composable
 private fun LanguagePill(label: String, active: Boolean, onClick: () -> Unit) {
-    val container = if (active) TotemPalette.Ink else Color.Transparent
+    val container = if (active) TotemPalette.Accent else Color.Transparent
     val content = if (active) TotemPalette.Paper else TotemPalette.InkMuted
     Surface(
         color = container,

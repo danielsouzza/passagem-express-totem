@@ -12,6 +12,7 @@
     <string name="payment_summary_total_passages">Passagens</string>
     <string name="payment_summary_total_fees">Taxas de embarque</string>
     <string name="payment_summary_total">Total</string>
+    <string name="payment_total_label">TOTAL</string>
     <string name="payment_method_pix">Pix</string>
     <string name="payment_method_pix_hint">QR Code ou Copia e Cola</string>
     <string name="payment_method_card">Cartão</string>
@@ -44,6 +45,8 @@
     <string name="payment_retry">Tentar novamente</string>
     <string name="payment_pay_again">Gerar novo PIX</string>
     <string name="payment_card_pay">Pagar com cartão</string>
+    <string name="payment_card_terminal_warning_title">Confira a maquininha antes de pagar</string>
+    <string name="payment_card_terminal_warning">Se houver uma cobrança pendente na tela do terminal, cancele-a no próprio terminal antes de continuar.</string>
     <string name="payment_card_creating">Enviando cobrança para a maquininha…</string>
     <string name="payment_card_waiting_title">Pague na maquininha ao lado</string>
     <string name="payment_card_waiting_hint">Insira, aproxime ou passe seu cartão</string>
@@ -51,6 +54,7 @@
     <string name="payment_card_success">Compra aprovada!</string>
     <string name="payment_card_canceled">Pagamento cancelado</string>
     <string name="payment_card_failed">Falha no pagamento</string>
+    <string name="payment_card_denied">Pagamento recusado. Tente outro cartão ou forma de pagamento.</string>
     <string name="payment_card_timeout">Tempo esgotado</string>
     <string name="payment_card_cancel">Cancelar pagamento</string>
     <string name="payment_card_amount">Valor: %1$s</string>

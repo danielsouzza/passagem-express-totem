@@ -1,7 +1,11 @@
 package com.example.passagenexpress.core.network.interceptor
 
 import com.example.passagenexpress.core.domain.repository.TotemConfigRepository
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import okhttp3.Interceptor
 import okhttp3.Response
@@ -15,9 +19,26 @@ class AuthInterceptor @Inject constructor(
     private val totemConfigRepository: TotemConfigRepository,
 ) : Interceptor {
 
+    // O subdomain muda só no setup. Em vez de ler o DataStore (I/O de disco) a cada request via
+    // runBlocking, mantemos uma cópia em memória atualizada por uma coleta contínua. `intercept`
+    // lê esse campo sem bloquear. `null` = ainda não carregado (só na 1ª request pós-boot, quando
+    // fazemos um único fallback bloqueante pra garantir o valor correto).
+    @Volatile
+    private var cachedSubdomain: String? = null
+
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    init {
+        scope.launch {
+            totemConfigRepository.config.collect { cachedSubdomain = it.subdomain }
+        }
+    }
+
     override fun intercept(chain: Interceptor.Chain): Response {
         val original = chain.request()
-        val subdomain = runBlocking { totemConfigRepository.config.first().subdomain }
+        val subdomain = cachedSubdomain
+            ?: runBlocking { totemConfigRepository.config.first().subdomain }
+                .also { cachedSubdomain = it }
 
         // `subdomain` vai SEMPRE em qualquer método. Quando não há subdomain configurado,
         // mandamos string vazia — `?subdomain=` (essa API é doida e diferencia ausente

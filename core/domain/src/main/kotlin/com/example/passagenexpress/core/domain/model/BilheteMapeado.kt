@@ -7,6 +7,8 @@ package com.example.passagenexpress.core.domain.model
  * (valores em "121,00", datas em dd/MM/yy etc.), então o app só posiciona/imprime.
  */
 data class BilheteMapeado(
+    /** URL da logomarca da empresa (`.../storage/logomarcas/...png`); impressa no topo. Pode vir nula. */
+    val logo: String?,
     val agencia: BilheteAgencia,
     val empresa: BilheteEmpresa,
     val embarcacao: BilheteEmbarcacao,

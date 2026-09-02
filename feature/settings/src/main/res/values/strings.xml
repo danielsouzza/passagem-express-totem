@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Gate de PIN -->
+    <string name="settings_pin_title">Acesso restrito</string>
+    <string name="settings_pin_subtitle">Digite o PIN para acessar as configurações do totem.</string>
+    <string name="settings_pin_label">PIN</string>
+    <string name="settings_pin_error">PIN incorreto. Tente novamente.</string>
+    <string name="settings_pin_enter">Entrar</string>
+    <string name="settings_exit">Sair</string>
+
+    <!-- Hub -->
+    <string name="settings_title">Configurações</string>
+    <string name="settings_subtitle">Altere os parâmetros deste totem.</string>
+    <string name="settings_back">Voltar</string>
+    <string name="settings_saved">%1$s salvo com sucesso.</string>
+    <string name="settings_section_subdomain">Subdomínio</string>
+    <string name="settings_section_porto">Porto de operação</string>
+    <string name="settings_section_embarcacao">Embarcação</string>
+    <string name="settings_section_printer">Impressora</string>
+    <string name="settings_section_language">Idioma padrão</string>
+    <string name="settings_section_pin">PIN de acesso</string>
+    <string name="settings_value_empty">Não definido</string>
+    <string name="settings_edit">Editar</string>
+    <string name="settings_cancel">Cancelar</string>
+    <string name="settings_save">Salvar</string>
+
+    <!-- Editores -->
+    <string name="settings_subdomain_subtitle">Subdomínio que identifica este totem (opcional). Deixe em branco se o backend não usa multi-tenant.</string>
+    <string name="settings_subdomain_label">Subdomínio (opcional)</string>
+    <string name="settings_subdomain_hint">empresa-x</string>
+    <string name="settings_porto_subtitle">Escolha o porto onde este totem está instalado, ou \"Nenhum\" para filtrar as viagens só pela embarcação.</string>
+    <string name="settings_porto_none">Nenhum</string>
+    <string name="settings_loading_portos">Carregando portos…</string>
+    <string name="settings_no_portos_title">Nenhum porto encontrado</string>
+    <string name="settings_no_portos_message">Tente novamente em alguns instantes ou verifique o subdomínio informado.</string>
+    <string name="settings_porto_search_hint">Buscar porto ou município</string>
+    <string name="settings_porto_search_empty">Nenhum porto bate com a busca</string>
+    <string name="settings_porto_clear_search">Limpar busca</string>
+    <string name="settings_embarcacao_subtitle">Vincule este totem a uma embarcação para listar só as viagens dela, ou escolha \"Nenhuma\".</string>
+    <string name="settings_embarcacao_none">Nenhuma</string>
+    <string name="settings_loading_embarcacoes">Carregando embarcações…</string>
+    <string name="settings_embarcacao_search_hint">Buscar embarcação ou empresa</string>
+    <string name="settings_embarcacao_search_empty">Nenhuma embarcação bate com a busca</string>
+    <string name="settings_load_error_title">Falha ao carregar portos</string>
+    <string name="settings_retry">Tentar de novo</string>
+    <string name="settings_tap_to_type">Toque para digitar</string>
+    <string name="settings_printer_subtitle">Selecione a impressora térmica USB conectada ao totem e faça um teste de impressão.</string>
+    <string name="settings_printer_refresh">Atualizar lista</string>
+    <string name="settings_printer_empty">Nenhuma impressora USB detectada. Conecte a impressora e toque em \"Atualizar lista\".</string>
+    <string name="settings_printer_test">Testar impressão</string>
+    <string name="settings_printer_testing">Imprimindo teste…</string>
+    <string name="settings_printer_test_ok">Teste enviado! Confira o ticket impresso.</string>
+    <string name="settings_paper_width_title">Largura do papel</string>
+    <string name="settings_paper_width_columns">%1$d colunas</string>
+    <string name="settings_language_subtitle">Idioma que aparece para o cliente quando ele toca para começar.</string>
+    <string name="settings_language_pt">Português (Brasil)</string>
+    <string name="settings_language_en">English</string>
+    <string name="settings_pin_change_subtitle">Defina um novo PIN numérico (mín. 4 dígitos) para acessar estas configurações.</string>
+    <string name="settings_pin_new_label">Novo PIN</string>
+
+    <!-- Teclado on-screen -->
+    <string name="settings_keypad_done">Concluído</string>
+    <string name="settings_keypad_close">Fechar teclado</string>
+    <string name="settings_keypad_delete">Apagar</string>
+    <string name="settings_keypad_space">Espaço</string>
+    <string name="settings_keypad_shift">Maiúsculas</string>
+</resources>

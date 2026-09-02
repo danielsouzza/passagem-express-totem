@@ -8,6 +8,6 @@ import javax.inject.Inject
 class ObterPointTapStatusUseCase @Inject constructor(
     private val repository: PointTapRepository,
 ) {
-    suspend operator fun invoke(orderId: String): AppResult<PointTapPaymentResult> =
-        repository.obterStatus(orderId)
+    suspend operator fun invoke(pedidoId: Long): AppResult<PointTapPaymentResult> =
+        repository.obterStatus(pedidoId)
 }

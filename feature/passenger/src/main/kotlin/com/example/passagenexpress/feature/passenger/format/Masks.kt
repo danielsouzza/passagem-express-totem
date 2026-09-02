@@ -13,25 +13,42 @@ import java.time.format.DateTimeFormatter
  * any Android dependencies.
  */
 object DocumentoMask {
+    // Máx. de dígitos por tipo (paridade com tiposDoc do app web).
     private const val CPF_DIGITS = 11
     private const val RG_DIGITS = 15
+    private const val TITULO_DIGITS = 12
+    private const val PASSAPORTE_DIGITS = 20
+    private const val CNH_DIGITS = 11
 
-    fun digitsOnly(display: String, tipo: TipoDocumento): String {
-        val max = when (tipo) {
-            TipoDocumento.CPF -> CPF_DIGITS
-            TipoDocumento.RG -> RG_DIGITS
-        }
-        return display.filter(Char::isDigit).take(max)
+    private fun maxDigits(tipo: TipoDocumento): Int = when (tipo) {
+        TipoDocumento.CPF -> CPF_DIGITS
+        TipoDocumento.RG -> RG_DIGITS
+        TipoDocumento.TituloEleitor -> TITULO_DIGITS
+        TipoDocumento.Passaporte -> PASSAPORTE_DIGITS
+        TipoDocumento.CNH -> CNH_DIGITS
     }
 
-    fun applyMask(digits: String, tipo: TipoDocumento): String = when (tipo) {
-        TipoDocumento.CPF -> maskCpf(digits)
-        TipoDocumento.RG -> digits
+    fun digitsOnly(display: String, tipo: TipoDocumento): String =
+        display.filter(Char::isDigit).take(maxDigits(tipo))
+
+    fun applyMask(digits: String, tipo: TipoDocumento): String {
+        // Capa aqui também: o keypad anexa o dígito antes de recapar, então sem isto o CPF
+        // (e afins) aceitaria um dígito a mais do que o permitido.
+        val capped = digits.filter(Char::isDigit).take(maxDigits(tipo))
+        return when (tipo) {
+            TipoDocumento.CPF -> maskCpf(capped)
+            // Título de Eleitor exibido em grupos de 4: "#### #### ####".
+            TipoDocumento.TituloEleitor -> groupEvery(capped, 4, ' ')
+            else -> capped
+        }
     }
 
     fun isValid(digits: String, tipo: TipoDocumento): Boolean = when (tipo) {
         TipoDocumento.CPF -> digits.length == CPF_DIGITS
         TipoDocumento.RG -> digits.length in 5..RG_DIGITS
+        TipoDocumento.TituloEleitor -> digits.length == TITULO_DIGITS
+        TipoDocumento.CNH -> digits.length == CNH_DIGITS
+        TipoDocumento.Passaporte -> digits.length in 6..PASSAPORTE_DIGITS
     }
 
     private fun maskCpf(digits: String): String {
@@ -42,6 +59,16 @@ object DocumentoMask {
                 3, 6 -> sb.append('.')
                 9 -> sb.append('-')
             }
+            sb.append(c)
+        }
+        return sb.toString()
+    }
+
+    private fun groupEvery(digits: String, size: Int, sep: Char): String {
+        if (digits.isEmpty()) return ""
+        val sb = StringBuilder()
+        digits.forEachIndexed { i, c ->
+            if (i != 0 && i % size == 0) sb.append(sep)
             sb.append(c)
         }
         return sb.toString()

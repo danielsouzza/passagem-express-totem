@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="print_title">Printing tickets</string>
+    <string name="print_preparing">Confirming your tickets…</string>
+    <string name="print_progress">Printing ticket %1$d of %2$d…</string>
+    <string name="print_done_title">Tickets printed!</string>
+    <string name="print_done_message">Take your tickets and have a great trip.</string>
+    <string name="print_auto_return">Returning in %1$ds…</string>
+    <string name="print_continue">Buy another ticket</string>
+    <string name="print_failed_title">Couldn\'t print</string>
+    <string name="print_failed_hint">Don\'t worry: the ticket was also sent to the passengers\' phones.</string>
+    <string name="print_retry">Try again</string>
+    <string name="print_finish">Finish</string>
+</resources>

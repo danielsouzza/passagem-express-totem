@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="print_title">Impressão dos bilhetes</string>
+    <string name="print_preparing">Confirmando suas passagens…</string>
+    <string name="print_progress">Imprimindo bilhete %1$d de %2$d…</string>
+    <string name="print_done_title">Bilhetes impressos!</string>
+    <string name="print_done_message">Retire seus bilhetes e tenha uma boa viagem.</string>
+    <string name="print_auto_return">Voltando em %1$ds…</string>
+    <string name="print_continue">Continuar comprando</string>
+    <string name="print_failed_title">Não foi possível imprimir</string>
+    <string name="print_failed_hint">Não se preocupe: o bilhete também foi enviado para o telefone dos passageiros.</string>
+    <string name="print_retry">Tentar novamente</string>
+    <string name="print_finish">Concluir</string>
+</resources>

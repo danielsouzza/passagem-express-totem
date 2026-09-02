@@ -8,15 +8,40 @@ data class PassengerUiState(
     val forms: List<PassageiroForm> = emptyList(),
     val activeIndex: Int = 0,
     val keypadField: KeypadField? = null,
+    /**
+     * Passo atual do modal guiado do passageiro ativo (null = modal fechado, form inline visível).
+     * Abre na entrada em [PassengerModalStep.Documento]; se o backend não achar o passageiro, avança
+     * campo a campo (Nome → Telefone → Nascimento); se achar, fecha e mostra o form preenchido.
+     */
+    val modalStep: PassengerModalStep? = null,
     val cpfLookupInFlight: Boolean = false,
     val submitting: Boolean = false,
     val erroGeral: String? = null,
     val completed: PassengerCompleted? = null,
 ) {
     val form: PassageiroForm? get() = forms.getOrNull(activeIndex)
-    val canGoPrev: Boolean get() = activeIndex > 0
-    val canGoNext: Boolean get() = activeIndex < forms.lastIndex
-    val isLast: Boolean get() = activeIndex == forms.lastIndex
+
+    /**
+     * Ocupante "extra" (removível): é o 2º+ passageiro de um mesmo cômodo — só acontece em
+     * camarote de capacidade > 1. Detectado por índice: existe um form anterior com o mesmo
+     * `comodo.id`. Pivô e lugares avulsos (poltrona) nunca são extras.
+     */
+    fun isExtraOccupant(index: Int): Boolean {
+        val f = forms.getOrNull(index) ?: return false
+        return forms.take(index).any { it.comodo.id == f.comodo.id }
+    }
+
+    /** Preenchido = tem os 4 campos (validação completa fica pro submit). */
+    fun isFilled(form: PassageiroForm): Boolean =
+        form.documentoDisplay.isNotBlank() && form.nome.isNotBlank() &&
+            form.telefoneDisplay.isNotBlank() && form.nascimentoDisplay.isNotBlank()
+
+    /**
+     * Avança quando todo assento ATIVO (não removido) está preenchido. Assentos extras marcados
+     * como "vou sozinho" (skipped) não contam.
+     */
+    val canFinish: Boolean
+        get() = forms.none { !it.skipped && !isFilled(it) }
 }
 
 /**
@@ -53,6 +78,8 @@ data class PassageiroForm(
     val telefoneDisplay: String = "",
     val nascimentoDisplay: String = "",
     val errors: PassageiroFormErrors = PassageiroFormErrors(),
+    /** Ocupante extra marcado como "vou sozinho": mantido como placeholder, descartado no envio. */
+    val skipped: Boolean = false,
 )
 
 data class PassageiroFormErrors(
@@ -64,6 +91,9 @@ data class PassageiroFormErrors(
     fun isEmpty(): Boolean =
         documento == null && nome == null && telefone == null && nascimento == null
 }
+
+/** Passos do modal guiado de captura do passageiro. */
+enum class PassengerModalStep { Documento, Nome, Telefone, Nascimento }
 
 /** Which field is bound to the keypad overlay. Nome usa o keypad alfanumérico; o resto, numérico. */
 sealed interface KeypadField {

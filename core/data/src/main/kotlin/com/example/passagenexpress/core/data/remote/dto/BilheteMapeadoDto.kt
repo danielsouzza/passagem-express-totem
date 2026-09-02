@@ -13,6 +13,9 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import java.text.DecimalFormat
+import java.text.DecimalFormatSymbols
+import java.util.Locale
 
 /**
  * Resposta de `GET passagens/{id}/bilhete-mapeado`. Os textos já vêm formatados pelo
@@ -21,6 +24,7 @@ import kotlinx.serialization.json.JsonPrimitive
  */
 @Serializable
 data class BilheteMapeadoDto(
+    val logo: String? = null,
     val agencia: BilheteAgenciaDto? = null,
     val empresa: BilheteEmpresaDto? = null,
     val embarcacao: BilheteEmbarcacaoDto? = null,
@@ -93,6 +97,7 @@ data class BilheteValoresDto(
 )
 
 fun BilheteMapeadoDto.toDomain(): BilheteMapeado = BilheteMapeado(
+    logo = logo?.takeIf { it.isNotBlank() },
     agencia = BilheteAgencia(
         cnpj = agencia?.cnpj.orEmpty(),
         nome = agencia?.nome.orEmpty(),
@@ -143,10 +148,23 @@ fun BilheteMapeadoDto.toDomain(): BilheteMapeado = BilheteMapeado(
     pdf417 = pdf417?.takeIf { it.isNotBlank() },
 )
 
-/** Aceita JsonObject (`{"Pix": 121}`) e ignora `[]`/null (map vazio do backend). */
+/**
+ * Aceita JsonObject (`{"Pix": 121}`) e ignora `[]`/null (map vazio do backend). Valores numéricos
+ * (ex.: `100` ou `100.5`) são formatados como moeda pt-BR ("100,00" / "1.234,50") pra alinhar com
+ * os demais valores do bilhete; valores que já vêm como string são mantidos como estão.
+ */
 private fun JsonElement?.toStringMap(): Map<String, String> {
     val obj = this as? JsonObject ?: return emptyMap()
     return obj.mapValues { (_, value) ->
-        (value as? JsonPrimitive)?.content ?: value.toString()
+        val prim = value as? JsonPrimitive ?: return@mapValues value.toString()
+        when {
+            prim.isString -> prim.content
+            else -> prim.content.toDoubleOrNull()?.let { formatBrMoney(it) } ?: prim.content
+        }
     }
 }
+
+private val brMoneyFormat: DecimalFormat =
+    DecimalFormat("#,##0.00", DecimalFormatSymbols(Locale.forLanguageTag("pt-BR")))
+
+private fun formatBrMoney(value: Double): String = brMoneyFormat.format(value)

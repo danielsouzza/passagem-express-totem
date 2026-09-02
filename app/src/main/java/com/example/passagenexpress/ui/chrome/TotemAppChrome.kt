@@ -11,6 +11,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.passagenexpress.R
+import com.example.passagenexpress.core.designsystem.component.LocalTotemCancelAction
 import com.example.passagenexpress.core.designsystem.component.LocalTotemStatusBar
 import com.example.passagenexpress.core.designsystem.component.TotemLanguageOption
 import com.example.passagenexpress.core.designsystem.component.TotemStatusBarState
@@ -25,6 +26,7 @@ private val TimeFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:m
 fun TotemAppChrome(
     viewModel: TotemAppChromeViewModel = hiltViewModel(),
     onHomeClick: (() -> Unit)? = null,
+    onCancel: (() -> Unit)? = null,
     content: @Composable () -> Unit,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -40,7 +42,10 @@ fun TotemAppChrome(
         onHomeClick = onHomeClick,
     )
 
-    CompositionLocalProvider(LocalTotemStatusBar provides statusBar) {
+    CompositionLocalProvider(
+        LocalTotemStatusBar provides statusBar,
+        LocalTotemCancelAction provides onCancel,
+    ) {
         content()
     }
 }

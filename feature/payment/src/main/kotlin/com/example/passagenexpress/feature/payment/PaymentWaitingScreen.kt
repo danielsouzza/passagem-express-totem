@@ -598,25 +598,27 @@ private fun BoxScope.AnimatedAmbientBackground() {
         ),
         label = "s3",
     )
+    // Forma lambda de graphicsLayer: lê os floats animados na fase de draw, não na composição.
+    // Sem isso, cada frame recompunha esta função inteira (e recriava os 3 brushes).
     AmbientBlob(
         modifier = Modifier
             .align(Alignment.TopStart)
             .size(width = 600.dp, height = 600.dp)
-            .graphicsLayer(scaleX = s1, scaleY = s1, alpha = 0.6f),
+            .graphicsLayer { scaleX = s1; scaleY = s1; alpha = 0.6f },
         color = TotemPalette.AccentTint,
     )
     AmbientBlob(
         modifier = Modifier
             .align(Alignment.BottomEnd)
             .size(width = 640.dp, height = 640.dp)
-            .graphicsLayer(scaleX = s2, scaleY = s2, alpha = 0.55f),
+            .graphicsLayer { scaleX = s2; scaleY = s2; alpha = 0.55f },
         color = TotemPalette.AccentTint,
     )
     AmbientBlob(
         modifier = Modifier
             .align(Alignment.CenterEnd)
             .size(width = 420.dp, height = 420.dp)
-            .graphicsLayer(scaleX = s3, scaleY = s3, alpha = 0.4f),
+            .graphicsLayer { scaleX = s3; scaleY = s3; alpha = 0.4f },
         color = TotemPalette.Primary100,
     )
 }
@@ -637,26 +639,29 @@ private fun BoxScope.SuccessAmbientBackground() {
         modifier = Modifier
             .align(Alignment.Center)
             .size(900.dp)
-            .graphicsLayer(scaleX = s1, scaleY = s1, alpha = 0.7f),
+            .graphicsLayer { scaleX = s1; scaleY = s1; alpha = 0.7f },
         color = TotemPalette.SuccessLight,
     )
 }
 
 @Composable
 private fun AmbientBlob(modifier: Modifier, color: Color) {
-    Box(
-        modifier = modifier.background(
-            brush = Brush.radialGradient(
-                colors = listOf(color, Color.Transparent),
-                center = Offset.Unspecified,
-            ),
-        ),
-    )
+    // Brush memoizado por cor — não recriar o gradiente radial a cada draw/recomposição.
+    val brush = remember(color) {
+        Brush.radialGradient(
+            colors = listOf(color, Color.Transparent),
+            center = Offset.Unspecified,
+        )
+    }
+    Box(modifier = modifier.background(brush = brush))
 }
 
 @Composable
 private fun cardErrorFor(message: String): String = when (message) {
     PaymentViewModel.CARD_ERROR_GENERIC -> stringRes(R.string.payment_card_failed)
+    PaymentViewModel.CARD_PAYMENT_DENIED -> stringRes(R.string.payment_card_denied)
+    // Demais casos carregam a mensagem real do backend (ex.: "Pedido já foi pago.",
+    // "Agência sem credenciais Point configuradas.").
     else -> message
 }
 

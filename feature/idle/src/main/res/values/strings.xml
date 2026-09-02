@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="idle_brand">Passagem Express</string>
-    <string name="idle_tap_to_start_pt">Toque para começar</string>
-    <string name="idle_tap_to_start_en">Tap to start</string>
-    <string name="idle_tagline">Compre seu bilhete em menos de 1 minuto · Buy your ticket in under a minute</string>
+    <string name="idle_tap_to_start">Toque para começar</string>
+    <string name="idle_tagline">Compre seu bilhete e embarque em menos de um minuto.</string>
+    <string name="idle_terminal_fallback">Terminal Marítimo</string>
+    <string name="idle_settings">Configurações</string>
 </resources>

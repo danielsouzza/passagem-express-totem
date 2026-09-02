@@ -153,7 +153,7 @@ fun NovoPedido.toDto(): CriarPedidoRequestDto = CriarPedidoRequestDto(
             descontoId = item.descontoId,
             comodoRelacionado = item.comodoRelacionado,
             comodosFilhos = item.comodosFilhos,
-            qtdComodosFilhos = item.comodosFilhos,
+            qtdComodosFilhos = item.qtdComodosFilhos,
             isContact = item.isContact,
         )
     },

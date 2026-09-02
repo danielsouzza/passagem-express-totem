@@ -30,5 +30,11 @@ class MainActivity : ComponentActivity() {
                 TotemApp()
             }
         }
+
+        // Se a tela sobreviver este intervalo sem crash, zera o backoff de reinício do totem.
+        window.decorView.postDelayed(
+            { TotemCrashRecovery.markLaunchStable(this) },
+            TotemCrashRecovery.stableAfterMs,
+        )
     }
 }

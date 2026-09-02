@@ -27,7 +27,8 @@ class TotemAppChromeViewModel @Inject constructor(
     val state: StateFlow<TotemAppChromeState> = observarTotemConfig()
         .map { config ->
             TotemAppChromeState(
-                portoNome = config.portoNome,
+                // Sem porto (totem a bordo): mostra o nome da embarcação no lugar do porto.
+                portoNome = config.portoNome.ifEmpty { config.embarcacaoNome },
                 language = config.defaultLanguage,
             )
         }

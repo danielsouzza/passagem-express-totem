@@ -16,6 +16,8 @@ data class BuscaViagensFiltros(
     val data: LocalDate? = null,
     val quantia: Int = 10,
     val dataIrrestrita: Boolean = false,
+    /** Quando o totem está a bordo de uma embarcação, filtra os trechos por ela (`embarcacao_id`). */
+    val embarcacaoId: Long? = null,
 )
 
 data class ResultadoBuscaViagens(

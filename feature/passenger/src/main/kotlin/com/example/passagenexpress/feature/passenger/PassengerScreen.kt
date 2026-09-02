@@ -1,6 +1,14 @@
 package com.example.passagenexpress.feature.passenger
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -18,9 +26,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
@@ -38,17 +46,22 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.passagenexpress.core.designsystem.component.ProvideDialogLocale
 import com.example.passagenexpress.core.designsystem.component.TotemAlphaKeypad
 import com.example.passagenexpress.core.designsystem.component.TotemInputField
 import com.example.passagenexpress.core.designsystem.component.TotemNumericKeypad
 import com.example.passagenexpress.core.designsystem.component.TotemPrimaryButton
 import com.example.passagenexpress.core.designsystem.component.TotemScreenScaffold
 import com.example.passagenexpress.core.designsystem.component.TotemSecondaryButton
+import com.example.passagenexpress.core.designsystem.theme.TotemPalette
 import com.example.passagenexpress.core.designsystem.theme.TotemTheme
 import com.example.passagenexpress.core.domain.model.TipoDocumento
 
@@ -61,7 +74,10 @@ fun PassengerScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val completed = state.completed
     if (completed != null) {
-        LaunchedEffect(completed) { onPassengersCompleted(completed) }
+        LaunchedEffect(completed) {
+            onPassengersCompleted(completed)
+            viewModel.onCompletedHandled()
+        }
     }
     PassengerContent(
         state = state,
@@ -71,10 +87,15 @@ fun PassengerScreen(
         onDigit = viewModel::onKeypadDigit,
         onChar = viewModel::onKeypadChar,
         onBackspace = viewModel::onKeypadBackspace,
-        onDone = viewModel::onKeypadDone,
-        onPrev = viewModel::onPrev,
-        onNext = viewModel::onNext,
-        onSubmit = viewModel::onSubmit,
+        onInlineDone = viewModel::onKeypadDone,
+        onOpenDocModal = viewModel::onOpenDocModal,
+        onCloseModal = viewModel::onCloseModal,
+        onModalNext = viewModel::onModalNext,
+        onEditPassenger = viewModel::onEditPassenger,
+        onRemovePassenger = viewModel::onRemovePassenger,
+        onRemoveActiveOccupant = viewModel::onRemoveActiveOccupant,
+        onRestoreOccupant = viewModel::onRestoreOccupant,
+        onAdvance = viewModel::onAdvance,
         onBack = onBack,
         onDismissError = viewModel::dismissError,
     )
@@ -89,117 +110,362 @@ private fun PassengerContent(
     onDigit: (Char) -> Unit,
     onChar: (Char) -> Unit,
     onBackspace: () -> Unit,
-    onDone: () -> Unit,
-    onPrev: () -> Unit,
-    onNext: () -> Unit,
-    onSubmit: () -> Unit,
+    onInlineDone: () -> Unit,
+    onOpenDocModal: () -> Unit,
+    onCloseModal: () -> Unit,
+    onModalNext: () -> Unit,
+    onEditPassenger: (Int) -> Unit,
+    onRemovePassenger: (Int) -> Unit,
+    onRemoveActiveOccupant: () -> Unit,
+    onRestoreOccupant: (Int) -> Unit,
+    onAdvance: () -> Unit,
     onBack: () -> Unit,
     onDismissError: () -> Unit,
 ) {
     val activeForm = state.form
+    val inlineKeypad = state.keypadField
+    // Há próximo passageiro quando existe algum assento não removido depois do ativo.
+    val hasNext = state.forms.indices.any { it > state.activeIndex && !state.forms[it].skipped }
     TotemScreenScaffold(
-        step = 5,
-        title = stringRes(R.string.passenger_title),
-        subtitle = if (state.forms.isEmpty()) null else stringResFmt(
-            R.string.passenger_subtitle,
-            state.activeIndex + 1,
-            state.forms.size,
-        ),
+        step = 3,
+        totalSteps = 4,
+        title = stringRes(R.string.passenger_screen_title),
+        subtitle = stringRes(R.string.passenger_screen_subtitle),
         footer = {
             TotemSecondaryButton(text = stringRes(R.string.passenger_back), onClick = onBack)
             Spacer(Modifier.width(TotemTheme.dimens.space12))
             Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
                 TotemPrimaryButton(
-                    text = if (state.submitting) stringRes(R.string.passenger_continue_saving)
-                    else stringRes(R.string.passenger_continue),
-                    onClick = onSubmit,
+                    text = when {
+                        state.submitting -> stringRes(R.string.passenger_continue_saving)
+                        hasNext -> stringRes(R.string.passenger_next_passenger)
+                        else -> stringRes(R.string.passenger_continue)
+                    },
+                    onClick = onAdvance,
                     enabled = !state.submitting,
                 )
             }
         },
-        stickyBottom = if (state.keypadField != null) ({
-            KeypadSlot(
-                state = state,
+        // Teclado inline pra editar um campo do assento ativo (quando o modal guiado está fechado).
+        stickyBottom = if (inlineKeypad != null && activeForm != null && state.modalStep == null) ({
+            val (alpha, label, current) = keypadContentFor(inlineKeypad, activeForm)
+            FieldKeypad(
+                alpha = alpha,
+                label = label,
+                currentValue = current,
+                doneLabel = stringRes(R.string.passenger_keypad_done),
                 onDigit = onDigit,
                 onChar = onChar,
                 onBackspace = onBackspace,
                 onClose = onCloseKeypad,
-                onDone = onDone,
+                onDone = onInlineDone,
             )
         }) else null,
     ) {
-        if (activeForm == null) return@TotemScreenScaffold
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(TotemTheme.dimens.space16),
+            verticalArrangement = Arrangement.spacedBy(TotemTheme.dimens.space24),
         ) {
-            FormFields(
-                form = activeForm,
-                cpfLookupInFlight = state.cpfLookupInFlight,
-                formIndex = state.activeIndex,
-                totalForms = state.forms.size,
-                activeKeypad = state.keypadField,
-                onChangeTipoDoc = onChangeTipoDoc,
-                onOpenKeypad = onOpenKeypad,
-                onRemove = { /* TODO: wire when remover semantics is defined */ },
-            )
-            if (state.forms.size > 1) {
-                PrevNextRow(
-                    canPrev = state.canGoPrev,
-                    canNext = state.canGoNext,
-                    onPrev = onPrev,
-                    onNext = onNext,
-                )
-            }
+            // Assentos agrupados por cômodo (igual à referência): cabeçalho + cards por passageiro.
+            state.forms.withIndex()
+                .groupBy { it.value.comodo.id }
+                .values
+                .forEach { entries ->
+                    val comodo = entries.first().value.comodo
+                    Column(verticalArrangement = Arrangement.spacedBy(TotemTheme.dimens.space12)) {
+                        ComodoHeader(
+                            nome = comodoLabel(comodo),
+                            initial = comodoInitial(comodo),
+                            seatCount = entries.size,
+                        )
+                        entries.forEachIndexed { seatPos, indexed ->
+                            val index = indexed.index
+                            val form = indexed.value
+                            val extra = seatPos > 0
+                            SeatCard(
+                                form = form,
+                                titular = !extra,
+                                optional = extra,
+                                filled = state.isFilled(form),
+                                active = index == state.activeIndex,
+                                formIndex = index,
+                                cpfLookupInFlight = state.cpfLookupInFlight,
+                                activeKeypad = state.keypadField,
+                                onFill = { onEditPassenger(index) },
+                                onRemove = if (extra) ({ onRemovePassenger(index) }) else null,
+                                onRestore = { onRestoreOccupant(index) },
+                                onOpenKeypad = onOpenKeypad,
+                                onOpenDocModal = onOpenDocModal,
+                            )
+                        }
+                    }
+                }
             if (state.erroGeral != null) {
                 ErrorBanner(message = stringRes(R.string.passenger_error_generic), onDismiss = onDismissError)
             }
             Spacer(Modifier.height(TotemTheme.dimens.space24))
         }
     }
+
+    if (state.modalStep != null && activeForm != null) {
+        DocumentModal(
+            step = state.modalStep,
+            form = activeForm,
+            forms = state.forms,
+            position = state.activeIndex + 1,
+            isExtra = state.isExtraOccupant(state.activeIndex),
+            cpfLookupInFlight = state.cpfLookupInFlight,
+            onChangeTipoDoc = onChangeTipoDoc,
+            onDigit = onDigit,
+            onChar = onChar,
+            onBackspace = onBackspace,
+            onNext = onModalNext,
+            onRemoveOccupant = onRemoveActiveOccupant,
+            onClose = onCloseModal,
+        )
+    }
 }
 
+// ---------------------------------------------------------------------------
+// Lista de passageiros: resumo (preenchido) + card pendente
+// ---------------------------------------------------------------------------
+
+/** Passageiro já preenchido — linha compacta com nome/documento; toca pra editar (reabre o modal). */
+private val SeatFilledBg = androidx.compose.ui.graphics.Color(0xFFF3FAF4)
+private val SeatFilledBorder = androidx.compose.ui.graphics.Color(0xFFCBE3D2)
+
+/** Cabeçalho do cômodo: ícone com inicial + nome + nº de lugares. */
+@Composable
+private fun ComodoHeader(nome: String, initial: String, seatCount: Int) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(TotemTheme.dimens.space8),
+    ) {
+        Box(
+            modifier = Modifier
+                .size(30.dp)
+                .clip(RoundedCornerShape(9.dp))
+                .background(TotemPalette.Primary100),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = initial,
+                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                color = TotemPalette.Ink2,
+            )
+        }
+        Text(
+            text = nome,
+            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+            color = TotemPalette.Ink,
+        )
+        Text(
+            text = if (seatCount > 1) stringResFmt(R.string.passenger_seats_many, seatCount)
+            else stringRes(R.string.passenger_seats_one),
+            style = MaterialTheme.typography.labelMedium,
+            color = TotemPalette.InkMuted,
+        )
+    }
+}
+
+/**
+ * Card de assento. Quando é o ativo, expande o **formulário inline** pra preencher/editar
+ * (documento abre o modal guiado; demais campos usam o teclado inline). Fora disso:
+ * preenchido → resumo + Editar; vazio → "Preencher dados"; removido → placeholder + Adicionar.
+ */
+@Composable
+private fun SeatCard(
+    form: PassageiroForm,
+    titular: Boolean,
+    optional: Boolean,
+    filled: Boolean,
+    active: Boolean,
+    formIndex: Int,
+    cpfLookupInFlight: Boolean,
+    activeKeypad: KeypadField?,
+    onFill: () -> Unit,
+    onRemove: (() -> Unit)?,
+    onRestore: () -> Unit,
+    onOpenKeypad: (KeypadField) -> Unit,
+    onOpenDocModal: () -> Unit,
+) {
+    val skipped = form.skipped
+    val expanded = active && !skipped
+    val border = when {
+        skipped -> TotemPalette.Hairline
+        expanded -> TotemPalette.Accent
+        filled -> SeatFilledBorder
+        titular -> TotemPalette.Primary100
+        else -> TotemPalette.Hairline
+    }
+    val bg = when {
+        skipped -> TotemPalette.PaperWarm
+        filled && !expanded -> SeatFilledBg
+        else -> TotemPalette.Paper
+    }
+    Surface(
+        shape = RoundedCornerShape(16.dp),
+        color = bg,
+        border = BorderStroke(if (expanded) 2.dp else 1.5.dp, border),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(
+            modifier = Modifier.padding(TotemTheme.dimens.space16),
+            verticalArrangement = Arrangement.spacedBy(TotemTheme.dimens.space16),
+        ) {
+            // Cabeçalho: papel do assento (título maior) + selo grátis + check quando preenchido.
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(TotemTheme.dimens.space8),
+            ) {
+                Text(
+                    text = if (titular) stringRes(R.string.passenger_role_titular)
+                    else stringRes(R.string.passenger_role_companion),
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                    color = TotemPalette.Ink,
+                )
+                if (optional) {
+                    Surface(shape = RoundedCornerShape(6.dp), color = TotemPalette.SuccessLight) {
+                        Text(
+                            text = stringRes(R.string.passenger_included_free).uppercase(),
+                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                            color = TotemPalette.Success,
+                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 4.dp),
+                        )
+                    }
+                }
+                Spacer(Modifier.weight(1f))
+                if (filled && !expanded && !skipped) {
+                    Icon(
+                        imageVector = Icons.Filled.CheckCircle,
+                        contentDescription = null,
+                        tint = TotemPalette.Success,
+                        modifier = Modifier.size(22.dp),
+                    )
+                }
+            }
+
+            when {
+                expanded -> {
+                    FormFields(
+                        form = form,
+                        formIndex = formIndex,
+                        cpfLookupInFlight = cpfLookupInFlight,
+                        activeKeypad = activeKeypad,
+                        onOpenKeypad = onOpenKeypad,
+                        onOpenDocModal = onOpenDocModal,
+                    )
+                    if (optional && onRemove != null) {
+                        OutlinedPillButton(text = stringRes(R.string.passenger_alone), onClick = onRemove)
+                    }
+                }
+
+                skipped -> Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(TotemTheme.dimens.space12),
+                ) {
+                    Text(
+                        text = stringRes(R.string.passenger_removed_note),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = TotemPalette.InkMuted,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Text(
+                        text = stringRes(R.string.passenger_add_back),
+                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                        color = TotemPalette.Accent,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(TotemTheme.dimens.radiusPill))
+                            .clickable(onClick = onRestore)
+                            .padding(horizontal = TotemTheme.dimens.space12, vertical = TotemTheme.dimens.space8),
+                    )
+                }
+
+                filled -> Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(TotemTheme.dimens.space12),
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = form.nome,
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                            color = TotemPalette.Ink,
+                            maxLines = 1,
+                        )
+                        Text(
+                            text = "${docLabelFor(form.tipoDocumento)} ${form.documentoDisplay}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = TotemPalette.InkMuted,
+                        )
+                    }
+                    Text(
+                        text = stringRes(R.string.passenger_edit),
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        color = TotemPalette.Accent,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(TotemTheme.dimens.radiusPill))
+                            .clickable(onClick = onFill)
+                            .padding(horizontal = TotemTheme.dimens.space16, vertical = TotemTheme.dimens.space8),
+                    )
+                }
+
+                else -> Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(TotemTheme.dimens.space12),
+                ) {
+                    TotemPrimaryButton(
+                        text = stringRes(R.string.passenger_fill_data),
+                        onClick = onFill,
+                        trailingArrow = false,
+                        leading = {
+                            Icon(
+                                imageVector = Icons.Filled.Add,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp),
+                            )
+                        },
+                    )
+                    Spacer(Modifier.weight(1f))
+                    if (optional && onRemove != null) {
+                        OutlinedPillButton(
+                            text = stringRes(R.string.passenger_alone),
+                            onClick = onRemove,
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** Formulário inline do assento ativo: campos tocáveis (documento abre o modal; resto, teclado). */
 @Composable
 private fun FormFields(
     form: PassageiroForm,
-    cpfLookupInFlight: Boolean,
     formIndex: Int,
-    totalForms: Int,
+    cpfLookupInFlight: Boolean,
     activeKeypad: KeypadField?,
-    onChangeTipoDoc: (TipoDocumento) -> Unit,
     onOpenKeypad: (KeypadField) -> Unit,
-    onRemove: () -> Unit,
+    onOpenDocModal: () -> Unit,
 ) {
     Column(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(TotemTheme.dimens.space16),
     ) {
-        FormHeader(
-            formIndex = formIndex,
-            canRemove = totalForms > 1,
-            onRemove = onRemove,
+        TotemInputField(
+            label = docLabelFor(form.tipoDocumento),
+            value = form.documentoDisplay,
+            error = errorMessageFor(form.errors.documento),
+            focused = activeKeypad == KeypadField.Documento(formIndex),
+            trailing = if (cpfLookupInFlight) ({ LoadingDot() }) else null,
+            onClick = onOpenDocModal,
         )
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(TotemTheme.dimens.space12),
-        ) {
-            DocTypeSelect(
-                selected = form.tipoDocumento,
-                onSelect = onChangeTipoDoc,
-                modifier = Modifier.weight(1f),
-            )
-            TotemInputField(
-                label = docLabelFor(form.tipoDocumento),
-                value = form.documentoDisplay,
-                error = errorMessageFor(form.errors.documento),
-                focused = activeKeypad == KeypadField.Documento(formIndex),
-                trailing = if (cpfLookupInFlight) ({ LoadingDot() }) else null,
-                onClick = { onOpenKeypad(KeypadField.Documento(formIndex)) },
-                modifier = Modifier.weight(1f),
-            )
-        }
         TotemInputField(
             label = stringRes(R.string.passenger_field_name),
             value = form.nome,
@@ -232,126 +498,255 @@ private fun FormFields(
     }
 }
 
-@Composable
-private fun FormHeader(
-    formIndex: Int,
-    canRemove: Boolean,
-    onRemove: () -> Unit,
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.Top,
-        horizontalArrangement = Arrangement.SpaceBetween,
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = stringResFmt(R.string.passenger_form_header, formIndex + 1),
-                style = MaterialTheme.typography.labelLarge.copy(
-                    fontWeight = FontWeight.SemiBold,
-                    letterSpacing = 1.sp,
-                ),
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-            Text(
-                text = stringRes(R.string.passenger_form_subtitle),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        if (canRemove) {
-            RemoveButton(onClick = onRemove)
-        }
-    }
-}
+private fun comodoLabel(comodo: com.example.passagenexpress.core.domain.model.Comodo): String =
+    comodo.nome?.takeIf { it.isNotBlank() }
+        ?: comodo.numeracao?.let { "Assento $it" }
+        ?: "Cômodo"
+
+private fun comodoInitial(comodo: com.example.passagenexpress.core.domain.model.Comodo): String =
+    comodoLabel(comodo).trim().firstOrNull()?.uppercase() ?: "•"
+
+
+// ---------------------------------------------------------------------------
+// Modal guiado (documento → nome → telefone → nascimento)
+// ---------------------------------------------------------------------------
 
 @Composable
-private fun RemoveButton(onClick: () -> Unit) {
-    Surface(
-        shape = RoundedCornerShape(999.dp),
-        color = MaterialTheme.colorScheme.surface,
-        border = BorderStroke(
-            width = TotemTheme.dimens.hairline,
-            color = MaterialTheme.colorScheme.outline,
-        ),
-        modifier = Modifier.clickable(onClick = onClick),
-    ) {
-        Row(
-            modifier = Modifier.padding(
-                horizontal = TotemTheme.dimens.space12,
-                vertical = TotemTheme.dimens.space8,
-            ),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(TotemTheme.dimens.space4),
-        ) {
-            Icon(
-                imageVector = Icons.Filled.Close,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(16.dp),
-            )
-            Text(
-                text = stringRes(R.string.passenger_remove),
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-    }
-}
-
-@Composable
-private fun DocTypeSelect(
-    selected: TipoDocumento,
-    onSelect: (TipoDocumento) -> Unit,
-    modifier: Modifier = Modifier,
+private fun DocumentModal(
+    step: PassengerModalStep,
+    form: PassageiroForm,
+    forms: List<PassageiroForm>,
+    position: Int,
+    isExtra: Boolean,
+    cpfLookupInFlight: Boolean,
+    onChangeTipoDoc: (TipoDocumento) -> Unit,
+    onDigit: (Char) -> Unit,
+    onChar: (Char) -> Unit,
+    onBackspace: () -> Unit,
+    onNext: () -> Unit,
+    onRemoveOccupant: () -> Unit,
+    onClose: () -> Unit,
 ) {
-    var expanded by remember { mutableStateOf(false) }
-    Column(
-        modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(TotemTheme.dimens.space4),
+    Dialog(
+        onDismissRequest = onClose,
+        // Sem isso o Compose aplica a largura-padrão de telefone e o modal fica estreito no totem,
+        // espremendo o teclado. Desligamos e controlamos a largura explicitamente.
+        properties = DialogProperties(usePlatformDefaultWidth = false),
     ) {
-        Box {
+        ProvideDialogLocale {
             Surface(
-                shape = RoundedCornerShape(16.dp),
-                color = MaterialTheme.colorScheme.surface,
-                border = BorderStroke(
-                    width = TotemTheme.dimens.hairline,
-                    color = MaterialTheme.colorScheme.outline,
-                ),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = TotemTheme.dimens.touchTarget)
-                    .clickable { expanded = true },
+                color = TotemPalette.Paper,
+                shape = RoundedCornerShape(TotemTheme.dimens.radiusLg),
+                modifier = Modifier.fillMaxWidth(0.85f),
             ) {
-                Row(
-                    modifier = Modifier.padding(
-                        horizontal = TotemTheme.dimens.space16,
-                        vertical = TotemTheme.dimens.space12,
-                    ),
-                    verticalAlignment = Alignment.CenterVertically,
+                Column(
+                    modifier = Modifier.padding(TotemTheme.dimens.space24),
+                    verticalArrangement = Arrangement.spacedBy(TotemTheme.dimens.space16),
                 ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = stringRes(R.string.passenger_field_doc_type),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        Text(
-                            text = docLabelFor(selected),
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onSurface,
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.Top,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            // Título dinâmico: diz o campo E de quem — "Informe o documento do passageiro 1".
+                            Text(
+                                text = modalTitleDynamic(step, position, isExtra),
+                                style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
+                                color = TotemPalette.Ink,
+                            )
+                            if (step == PassengerModalStep.Documento) {
+                                Text(
+                                    text = stringRes(R.string.passenger_doc_modal_subtitle),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = TotemPalette.InkMuted,
+                                )
+                            }
+                        }
+                        IconButton(onClick = onClose) {
+                            Icon(
+                                imageVector = Icons.Filled.Close,
+                                contentDescription = stringRes(R.string.passenger_keypad_close),
+                                tint = TotemPalette.Ink,
+                            )
+                        }
+                    }
+
+                    AnimatedContent(
+                        targetState = position to step,
+                        transitionSpec = {
+                            if (initialState.first != targetState.first) {
+                                // Troca de passageiro: slide lateral cheio — o anterior sai, o novo entra.
+                                (slideInHorizontally(tween(340)) { it } + fadeIn(tween(240))) togetherWith
+                                    (slideOutHorizontally(tween(340)) { -it } + fadeOut(tween(200)))
+                            } else {
+                                // Passo dentro do mesmo passageiro: slide sutil.
+                                (fadeIn(tween(220)) + slideInHorizontally(tween(260)) { it / 5 }) togetherWith
+                                    (fadeOut(tween(140)) + slideOutHorizontally(tween(200)) { -it / 5 })
+                            }
+                        },
+                        label = "passengerModalStep",
+                    ) { target ->
+                        val (pos, s) = target
+                        // Form da posição animada: o passageiro que sai aparece preenchido e o que
+                        // entra aparece vazio — fica claro que é OUTRO passageiro, não os dados limpos.
+                        val f = forms.getOrNull(pos - 1) ?: form
+                        Column(verticalArrangement = Arrangement.spacedBy(TotemTheme.dimens.space16)) {
+                            if (s == PassengerModalStep.Documento) {
+                                DocTypeSelect(selected = f.tipoDocumento, onSelect = onChangeTipoDoc)
+                            }
+                            val (alpha, label, current) = keypadContentFor(fieldFor(s, 0), f)
+                            FieldKeypad(
+                                alpha = alpha,
+                                label = label,
+                                currentValue = current,
+                                doneLabel = if (s == PassengerModalStep.Nascimento) {
+                                    stringRes(R.string.passenger_modal_finish)
+                                } else {
+                                    stringRes(R.string.passenger_modal_next)
+                                },
+                                onDigit = onDigit,
+                                onChar = onChar,
+                                onBackspace = onBackspace,
+                                onClose = onClose,
+                                onDone = onNext,
+                            )
+                            val stepError = errorMessageFor(errorForStep(s, f))
+                            if (stepError != null) {
+                                Text(
+                                    text = stepError,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.error,
+                                )
+                            }
+                        }
+                    }
+
+                    if (cpfLookupInFlight) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(TotemTheme.dimens.space12),
+                        ) {
+                            CircularProgressIndicator(
+                                strokeWidth = 2.dp,
+                                modifier = Modifier.size(20.dp),
+                                color = TotemPalette.Accent,
+                            )
+                            Text(
+                                text = stringRes(R.string.passenger_doc_searching),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = TotemPalette.InkMuted,
+                            )
+                        }
+                    }
+
+                    // Ocupante extra de camarote pode optar por não ir (viajante sozinho).
+                    if (isExtra) {
+                        OutlinedPillButton(
+                            text = stringRes(R.string.passenger_remove_occupant),
+                            onClick = onRemoveOccupant,
+                            modifier = Modifier.fillMaxWidth(),
                         )
                     }
-                    Icon(
-                        imageVector = Icons.Filled.ArrowDropDown,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
                 }
             }
-            DropdownMenu(
-                expanded = expanded,
-                onDismissRequest = { expanded = false },
+        }
+    }
+}
+
+/** Botão com contorno (outline) — usado para ações secundárias visíveis (remover ocupante). */
+@Composable
+private fun OutlinedPillButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        shape = RoundedCornerShape(TotemTheme.dimens.radiusPill),
+        color = TotemPalette.Paper,
+        contentColor = TotemPalette.Ink,
+        border = BorderStroke(1.5.dp, TotemPalette.Ink),
+        modifier = modifier
+            .heightIn(min = TotemTheme.dimens.touchTarget)
+            .clip(RoundedCornerShape(TotemTheme.dimens.radiusPill))
+            .clickable(onClick = onClick),
+    ) {
+        Box(
+            modifier = Modifier.padding(
+                horizontal = TotemTheme.dimens.space24,
+                vertical = TotemTheme.dimens.space12,
+            ),
+            contentAlignment = Alignment.Center,
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(TotemTheme.dimens.space8),
             ) {
+                Icon(
+                    imageVector = Icons.Filled.Close,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                )
+                Text(
+                    text = text,
+                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                )
+            }
+        }
+    }
+}
+
+/** Select (dropdown) do tipo de documento, com todos os tipos. */
+@Composable
+private fun DocTypeSelect(selected: TipoDocumento, onSelect: (TipoDocumento) -> Unit) {
+    var expanded by remember { mutableStateOf(false) }
+    Box(modifier = Modifier.fillMaxWidth()) {
+        Surface(
+            shape = RoundedCornerShape(16.dp),
+            color = TotemPalette.Paper,
+            border = BorderStroke(
+                width = if (expanded) 2.dp else 1.5.dp,
+                color = if (expanded) TotemPalette.Accent else TotemPalette.Hairline,
+            ),
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = TotemTheme.dimens.touchTarget)
+                .clip(RoundedCornerShape(16.dp))
+                .clickable { expanded = true },
+        ) {
+            Row(
+                modifier = Modifier.padding(
+                    horizontal = TotemTheme.dimens.space16,
+                    vertical = TotemTheme.dimens.space12,
+                ),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = stringRes(R.string.passenger_field_doc_type),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = TotemPalette.InkMuted,
+                    )
+                    Text(
+                        text = docLabelFor(selected),
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                        color = TotemPalette.Ink,
+                    )
+                }
+                Icon(
+                    imageVector = Icons.Filled.ArrowDropDown,
+                    contentDescription = null,
+                    tint = TotemPalette.InkMuted,
+                )
+            }
+        }
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+        ) {
+            // Reaplica o idioma dentro do popup (subcomposição própria, igual à Dialog).
+            ProvideDialogLocale {
                 TipoDocumento.entries.forEach { tipo ->
                     DropdownMenuItem(
                         text = { Text(docLabelFor(tipo)) },
@@ -366,85 +761,28 @@ private fun DocTypeSelect(
     }
 }
 
-@Composable
-private fun PrevNextRow(
-    canPrev: Boolean,
-    canNext: Boolean,
-    onPrev: () -> Unit,
-    onNext: () -> Unit,
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween,
-    ) {
-        StepIconButton(
-            enabled = canPrev,
-            icon = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
-            label = stringRes(R.string.passenger_prev),
-            onClick = onPrev,
-        )
-        StepIconButton(
-            enabled = canNext,
-            icon = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-            label = stringRes(R.string.passenger_next),
-            onClick = onNext,
-            trailingIcon = true,
-        )
-    }
-}
+// ---------------------------------------------------------------------------
+// Teclado compartilhado (inline + modal)
+// ---------------------------------------------------------------------------
 
 @Composable
-private fun StepIconButton(
-    enabled: Boolean,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+private fun FieldKeypad(
+    alpha: Boolean,
     label: String,
-    onClick: () -> Unit,
-    trailingIcon: Boolean = false,
-) {
-    Surface(
-        shape = RoundedCornerShape(14.dp),
-        color = if (enabled) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.surfaceVariant,
-        tonalElevation = 1.dp,
-        modifier = Modifier
-            .heightIn(min = TotemTheme.dimens.touchTarget)
-            .clickable(enabled = enabled, onClick = onClick),
-    ) {
-        Row(
-            modifier = Modifier.padding(
-                horizontal = TotemTheme.dimens.space20,
-                vertical = TotemTheme.dimens.space12,
-            ),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(TotemTheme.dimens.space8),
-        ) {
-            val tint = if (enabled) MaterialTheme.colorScheme.onSurface
-            else MaterialTheme.colorScheme.onSurfaceVariant
-            if (!trailingIcon) Icon(imageVector = icon, contentDescription = null, tint = tint)
-            Text(text = label, style = MaterialTheme.typography.labelLarge, color = tint)
-            if (trailingIcon) Icon(imageVector = icon, contentDescription = null, tint = tint)
-        }
-    }
-}
-
-@Composable
-private fun KeypadSlot(
-    state: PassengerUiState,
+    currentValue: String,
+    doneLabel: String,
     onDigit: (Char) -> Unit,
     onChar: (Char) -> Unit,
     onBackspace: () -> Unit,
     onClose: () -> Unit,
     onDone: () -> Unit,
 ) {
-    val field = state.keypadField ?: return
-    val form = state.forms.getOrNull(passengerIndexOf(field)) ?: return
-    val doneLabel = stringRes(R.string.passenger_keypad_done)
     val closeDesc = stringRes(R.string.passenger_keypad_close)
     val deleteDesc = stringRes(R.string.passenger_keypad_delete)
-    when (field) {
-        is KeypadField.Nome -> TotemAlphaKeypad(
-            label = stringRes(R.string.passenger_field_name),
-            currentValue = form.nome,
+    if (alpha) {
+        TotemAlphaKeypad(
+            label = label,
+            currentValue = currentValue,
             onChar = onChar,
             onBackspace = onBackspace,
             onClose = onClose,
@@ -455,34 +793,62 @@ private fun KeypadSlot(
             spaceContentDesc = stringRes(R.string.passenger_keypad_space),
             shiftContentDesc = stringRes(R.string.passenger_keypad_shift),
         )
-        else -> {
-            val (label, current) = when (field) {
-                is KeypadField.Documento -> docLabelFor(form.tipoDocumento) to form.documentoDisplay
-                is KeypadField.Telefone -> stringRes(R.string.passenger_field_phone) to form.telefoneDisplay
-                is KeypadField.Nascimento -> stringRes(R.string.passenger_field_birthdate) to form.nascimentoDisplay
-                is KeypadField.Nome -> return // unreachable
-            }
-            TotemNumericKeypad(
-                label = label,
-                currentValue = current,
-                onDigit = onDigit,
-                onBackspace = onBackspace,
-                onClose = onClose,
-                onDone = onDone,
-                doneLabel = doneLabel,
-                closeContentDesc = closeDesc,
-                deleteContentDesc = deleteDesc,
-            )
-        }
+    } else {
+        TotemNumericKeypad(
+            label = label,
+            currentValue = currentValue,
+            onDigit = onDigit,
+            onBackspace = onBackspace,
+            onClose = onClose,
+            onDone = onDone,
+            doneLabel = doneLabel,
+            closeContentDesc = closeDesc,
+            deleteContentDesc = deleteDesc,
+        )
     }
 }
 
-private fun passengerIndexOf(field: KeypadField): Int = when (field) {
-    is KeypadField.Documento -> field.formIndex
-    is KeypadField.Telefone -> field.formIndex
-    is KeypadField.Nascimento -> field.formIndex
-    is KeypadField.Nome -> field.formIndex
+/** (alpha?, label, valorAtual) para renderizar o teclado de um campo. */
+@Composable
+private fun keypadContentFor(field: KeypadField, form: PassageiroForm): Triple<Boolean, String, String> =
+    when (field) {
+        is KeypadField.Documento -> Triple(false, docLabelFor(form.tipoDocumento), form.documentoDisplay)
+        is KeypadField.Nome -> Triple(true, stringRes(R.string.passenger_field_name), form.nome)
+        is KeypadField.Telefone -> Triple(false, stringRes(R.string.passenger_field_phone), form.telefoneDisplay)
+        is KeypadField.Nascimento -> Triple(false, stringRes(R.string.passenger_field_birthdate), form.nascimentoDisplay)
+    }
+
+private fun fieldFor(step: PassengerModalStep, index: Int): KeypadField = when (step) {
+    PassengerModalStep.Documento -> KeypadField.Documento(index)
+    PassengerModalStep.Nome -> KeypadField.Nome(index)
+    PassengerModalStep.Telefone -> KeypadField.Telefone(index)
+    PassengerModalStep.Nascimento -> KeypadField.Nascimento(index)
 }
+
+private fun errorForStep(step: PassengerModalStep, form: PassageiroForm): String? = when (step) {
+    PassengerModalStep.Documento -> form.errors.documento
+    PassengerModalStep.Nome -> form.errors.nome
+    PassengerModalStep.Telefone -> form.errors.telefone
+    PassengerModalStep.Nascimento -> form.errors.nascimento
+}
+
+/** Título dinâmico do modal: "Informe o documento do passageiro 1" / "… do ocupante 2". */
+@Composable
+private fun modalTitleDynamic(step: PassengerModalStep, position: Int, isExtra: Boolean): String {
+    val person = if (isExtra) stringResFmt(R.string.passenger_person_extra, position)
+    else stringResFmt(R.string.passenger_person, position)
+    val template = when (step) {
+        PassengerModalStep.Documento -> R.string.passenger_modal_doc_of
+        PassengerModalStep.Nome -> R.string.passenger_modal_name_of
+        PassengerModalStep.Telefone -> R.string.passenger_modal_phone_of
+        PassengerModalStep.Nascimento -> R.string.passenger_modal_birth_of
+    }
+    return stringResFmt(template, person)
+}
+
+// ---------------------------------------------------------------------------
+// Auxiliares
+// ---------------------------------------------------------------------------
 
 @Composable
 private fun ErrorBanner(message: String, onDismiss: () -> Unit) {
@@ -528,7 +894,10 @@ private fun LoadingDot() {
 @Composable
 private fun docLabelFor(tipo: TipoDocumento): String = when (tipo) {
     TipoDocumento.CPF -> stringRes(R.string.passenger_field_cpf)
-    TipoDocumento.RG -> stringRes(R.string.passenger_field_document)
+    TipoDocumento.RG -> stringRes(R.string.passenger_field_rg)
+    TipoDocumento.TituloEleitor -> stringRes(R.string.passenger_field_titulo)
+    TipoDocumento.Passaporte -> stringRes(R.string.passenger_field_passaporte)
+    TipoDocumento.CNH -> stringRes(R.string.passenger_field_cnh)
 }
 
 @Composable

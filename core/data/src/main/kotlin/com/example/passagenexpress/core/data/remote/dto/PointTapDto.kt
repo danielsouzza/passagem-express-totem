@@ -24,8 +24,8 @@ data class PointTapOrderRequestDto(
 )
 
 /**
- * Resposta do `POST /api/payments` na nova API de orders. `order_id` tem formato
- * `ORD…` (string opaca de tamanho variável). O app trata como id qualquer.
+ * Resposta do `POST /api/payments`. `order_id` tem formato `ORD…` (string opaca) e `status`
+ * vem `OPEN` (order recém-criada). O app trata o id como string qualquer.
  */
 @Serializable
 data class PointTapOrderResponseDto(
@@ -34,12 +34,17 @@ data class PointTapOrderResponseDto(
     val status: String? = null,
 )
 
+/**
+ * Resposta do `GET /api/point/status/{orderId}`. O backend devolve o **pedido**: `status` em
+ * português (`Pago`/`Negado`/`Solicitado`/`Em venda`) e `forma_pagamento` (ex.: "Cartão de
+ * Crédito"). Os demais campos (`passagens_agrupadas` etc.) são ignorados aqui — a impressão
+ * relê o status pago via `PedidoApi`.
+ */
 @Serializable
 data class PointTapStatusResponseDto(
     val status: String? = null,
-    @SerialName("payment_method") val paymentMethod: String? = null,
-    val installments: Int? = null,
-    val amount: Long? = null,
+    @SerialName("forma_pagamento") val formaPagamento: String? = null,
+    val total: Double? = null,
 )
 
 fun PointTapPaymentType.toApiValue(): String = when (this) {
@@ -66,15 +71,18 @@ fun PointTapOrderResponseDto.toDomain(): PointTapOrder? {
 
 fun PointTapStatusResponseDto.toDomain(): PointTapPaymentResult = PointTapPaymentResult(
     status = parsePointTapStatus(status),
-    paymentMethod = paymentMethod,
-    installments = installments,
-    amountCents = amount,
+    paymentMethod = formaPagamento,
+    installments = null,
+    amountCents = total?.let { (it * 100).toLong() },
 )
 
-fun parsePointTapStatus(raw: String?): PointTapStatus = when (raw?.uppercase()) {
-    "FINISHED" -> PointTapStatus.Finished
-    "CANCELED", "CANCELLED" -> PointTapStatus.Canceled
-    "ERROR" -> PointTapStatus.Error
-    "PROCESSING" -> PointTapStatus.Processing
-    else -> PointTapStatus.Open
+/**
+ * Normaliza o `status` do pedido (PT) para o domínio. `Pago` = aprovado; `Negado` = recusado;
+ * qualquer outro (`Solicitado`, `Em venda`, `OPEN`, …) é tratado como ainda pendente — segue
+ * aguardando no polling.
+ */
+fun parsePointTapStatus(raw: String?): PointTapStatus = when (raw?.trim()?.lowercase()) {
+    "pago" -> PointTapStatus.Paid
+    "negado" -> PointTapStatus.Denied
+    else -> PointTapStatus.Pending
 }

@@ -15,6 +15,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -24,6 +25,7 @@ import com.example.passagenexpress.core.designsystem.component.TotemPrimaryButto
 import com.example.passagenexpress.core.designsystem.component.TotemScreenScaffold
 import com.example.passagenexpress.core.designsystem.component.TotemSecondaryButton
 import com.example.passagenexpress.core.designsystem.theme.TotemPalette
+import com.example.passagenexpress.feature.print.R
 import kotlinx.coroutines.delay
 
 private const val AUTO_RETURN_SECONDS = 10
@@ -35,12 +37,12 @@ fun PrintScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
-    TotemScreenScaffold(title = "Impressão dos bilhetes") {
+    TotemScreenScaffold(title = stringResource(R.string.print_title)) {
         when (val s = state) {
-            is PrintUiState.Preparing -> TotemLoading(label = "Confirmando suas passagens...")
+            is PrintUiState.Preparing -> TotemLoading(label = stringResource(R.string.print_preparing))
 
             is PrintUiState.Printing -> TotemLoading(
-                label = "Imprimindo bilhete ${s.current} de ${s.total}...",
+                label = stringResource(R.string.print_progress, s.current, s.total),
             )
 
             is PrintUiState.Done -> DoneContent(onFinished = onFinished)
@@ -67,25 +69,25 @@ private fun DoneContent(onFinished: () -> Unit) {
     }
     CenteredColumn {
         Text(
-            text = "Bilhetes impressos!",
+            text = stringResource(R.string.print_done_title),
             style = MaterialTheme.typography.headlineMedium,
             color = TotemPalette.Ink,
             textAlign = TextAlign.Center,
         )
         Text(
-            text = "Retire seus bilhetes e tenha uma boa viagem.",
+            text = stringResource(R.string.print_done_message),
             style = MaterialTheme.typography.bodyLarge,
             color = TotemPalette.InkMuted,
             textAlign = TextAlign.Center,
         )
         Text(
-            text = "Voltando em ${seconds}s…",
+            text = stringResource(R.string.print_auto_return, seconds),
             style = MaterialTheme.typography.titleMedium,
             color = TotemPalette.InkMuted,
             textAlign = TextAlign.Center,
         )
         TotemPrimaryButton(
-            text = "Continuar comprando",
+            text = stringResource(R.string.print_continue),
             onClick = onFinished,
             trailingArrow = false,
         )
@@ -100,7 +102,7 @@ private fun FailedContent(
 ) {
     CenteredColumn {
         Text(
-            text = "Não foi possível imprimir",
+            text = stringResource(R.string.print_failed_title),
             style = MaterialTheme.typography.headlineMedium,
             color = MaterialTheme.colorScheme.error,
             textAlign = TextAlign.Center,
@@ -112,13 +114,13 @@ private fun FailedContent(
             textAlign = TextAlign.Center,
         )
         Text(
-            text = "Não se preocupe: o bilhete também foi enviado para o telefone dos passageiros.",
+            text = stringResource(R.string.print_failed_hint),
             style = MaterialTheme.typography.bodyLarge,
             color = TotemPalette.Ink,
             textAlign = TextAlign.Center,
         )
-        TotemPrimaryButton(text = "Tentar novamente", onClick = onRetry, trailingArrow = false)
-        TotemSecondaryButton(text = "Concluir", onClick = onFinish)
+        TotemPrimaryButton(text = stringResource(R.string.print_retry), onClick = onRetry, trailingArrow = false)
+        TotemSecondaryButton(text = stringResource(R.string.print_finish), onClick = onFinish)
     }
 }
 

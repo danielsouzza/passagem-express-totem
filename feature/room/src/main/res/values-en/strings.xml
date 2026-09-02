@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="room_title">Choose your spot</string>
+    <string name="room_subtitle_route">%1$s → %2$s</string>
+    <string name="room_loading">Loading data…</string>
+    <string name="room_error_title">Failed to load spots</string>
+    <string name="room_retry">Try again</string>
+    <string name="room_back">Back</string>
+    <string name="room_continue">Next</string>
+    <string name="room_legend_free">Available</string>
+    <string name="room_legend_selected">Selected</string>
+    <string name="room_legend_unavailable">Unavailable</string>
+    <string name="room_section_seats">Seat map</string>
+    <string name="room_section_entry">Entrance</string>
+    <string name="room_section_cabins">Cabins</string>
+    <string name="room_section_other">Other types</string>
+    <string name="room_selected_title">Selected spots</string>
+    <string name="room_selected_empty">No spot selected, tap one to continue</string>
+    <string name="room_free_seating_title">Heads up: open seating</string>
+    <string name="room_free_seating_message">On this trip seats are not assigned. Passengers pick any available seat when boarding.</string>
+    <string name="room_quantity_available">%1$d available</string>
+    <string name="room_quantity_unavailable">Sold out</string>
+    <string name="room_value_label">Price</string>
+    <string name="room_value_pix">with Pix</string>
+    <string name="room_decrement">Decrease</string>
+    <string name="room_increment">Increase</string>
+    <string name="room_remove">Remove</string>
+    <string name="room_starting_sale">Starting sale…</string>
+    <string name="room_seat_taken">Spot unavailable</string>
+</resources>

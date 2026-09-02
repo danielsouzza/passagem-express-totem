@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- PIN gate -->
+    <string name="settings_pin_title">Restricted access</string>
+    <string name="settings_pin_subtitle">Enter the PIN to open the totem settings.</string>
+    <string name="settings_pin_label">PIN</string>
+    <string name="settings_pin_error">Wrong PIN. Please try again.</string>
+    <string name="settings_pin_enter">Enter</string>
+    <string name="settings_exit">Exit</string>
+
+    <!-- Hub -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_subtitle">Change this totem\'s parameters.</string>
+    <string name="settings_back">Back</string>
+    <string name="settings_saved">%1$s saved successfully.</string>
+    <string name="settings_section_subdomain">Subdomain</string>
+    <string name="settings_section_porto">Operating port</string>
+    <string name="settings_section_embarcacao">Vessel</string>
+    <string name="settings_section_printer">Printer</string>
+    <string name="settings_section_language">Default language</string>
+    <string name="settings_section_pin">Access PIN</string>
+    <string name="settings_value_empty">Not set</string>
+    <string name="settings_edit">Edit</string>
+    <string name="settings_cancel">Cancel</string>
+    <string name="settings_save">Save</string>
+
+    <!-- Editors -->
+    <string name="settings_subdomain_subtitle">Subdomain that identifies this totem (optional). Leave blank if the backend is not multi-tenant.</string>
+    <string name="settings_subdomain_label">Subdomain (optional)</string>
+    <string name="settings_subdomain_hint">company-x</string>
+    <string name="settings_porto_subtitle">Choose the port where this totem is installed, or \"None\" to filter trips only by vessel.</string>
+    <string name="settings_porto_none">None</string>
+    <string name="settings_loading_portos">Loading ports…</string>
+    <string name="settings_no_portos_title">No ports found</string>
+    <string name="settings_no_portos_message">Try again in a few moments or check the subdomain entered.</string>
+    <string name="settings_porto_search_hint">Search port or city</string>
+    <string name="settings_porto_search_empty">No port matches the search</string>
+    <string name="settings_porto_clear_search">Clear search</string>
+    <string name="settings_embarcacao_subtitle">Bind this totem to a vessel to list only its trips, or choose \"None\".</string>
+    <string name="settings_embarcacao_none">None</string>
+    <string name="settings_loading_embarcacoes">Loading vessels…</string>
+    <string name="settings_embarcacao_search_hint">Search vessel or company</string>
+    <string name="settings_embarcacao_search_empty">No vessel matches the search</string>
+    <string name="settings_load_error_title">Failed to load ports</string>
+    <string name="settings_retry">Try again</string>
+    <string name="settings_tap_to_type">Tap to type</string>
+    <string name="settings_printer_subtitle">Select the USB thermal printer connected to the totem and run a test print.</string>
+    <string name="settings_printer_refresh">Refresh list</string>
+    <string name="settings_printer_empty">No USB printer detected. Connect the printer and tap \"Refresh list\".</string>
+    <string name="settings_printer_test">Test print</string>
+    <string name="settings_printer_testing">Printing test…</string>
+    <string name="settings_printer_test_ok">Test sent! Check the printed ticket.</string>
+    <string name="settings_paper_width_title">Paper width</string>
+    <string name="settings_paper_width_columns">%1$d columns</string>
+    <string name="settings_language_subtitle">Language shown to the customer when they tap to start.</string>
+    <string name="settings_language_pt">Português (Brasil)</string>
+    <string name="settings_language_en">English</string>
+    <string name="settings_pin_change_subtitle">Set a new numeric PIN (min. 4 digits) to access these settings.</string>
+    <string name="settings_pin_new_label">New PIN</string>
+
+    <!-- On-screen keypad -->
+    <string name="settings_keypad_done">Done</string>
+    <string name="settings_keypad_close">Close keyboard</string>
+    <string name="settings_keypad_delete">Delete</string>
+    <string name="settings_keypad_space">Space</string>
+    <string name="settings_keypad_shift">Uppercase</string>
+</resources>

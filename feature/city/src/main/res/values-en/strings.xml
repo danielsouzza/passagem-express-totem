@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="city_origem_title">Where are you boarding?</string>
+    <string name="city_origem_subtitle">Choose your boarding city</string>
+    <string name="city_destino_title">Where are you headed?</string>
+    <string name="city_destino_subtitle_format">Departing from %1$s · choose your destination</string>
+    <string name="city_destino_subtitle_porto_format">Boarding at %1$s · choose your destination</string>
+    <string name="city_loading">Loading cities…</string>
+    <string name="city_error_title">Failed to load cities</string>
+    <string name="city_empty_title">No cities available</string>
+    <string name="city_empty_message">There are no cities configured for this port right now.</string>
+    <string name="city_empty_destinos_title">No destinations from this origin</string>
+    <string name="city_empty_destinos_message">Try another boarding city.</string>
+    <string name="city_search_hint">Search city</string>
+    <string name="city_search_clear">Clear search</string>
+    <string name="city_search_empty">No city matches your search</string>
+    <string name="city_retry">Try again</string>
+    <string name="city_back">Back</string>
+    <string name="city_continue">Continue</string>
+    <string name="city_keypad_done">Done</string>
+    <string name="city_keypad_close">Close</string>
+    <string name="city_keypad_delete">Delete</string>
+    <string name="city_keypad_space">Space</string>
+    <string name="city_keypad_shift">Shift</string>
+</resources>

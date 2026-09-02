@@ -11,7 +11,11 @@ data class Passageiro(
     val tipoDocumento: TipoDocumento = TipoDocumento.CPF,
 )
 
+/** Tipos de documento aceitos (o `id` é o código do backend — ver tiposDoc no app web). */
 enum class TipoDocumento(val id: Int) {
     CPF(5),
     RG(1),
+    TituloEleitor(2),
+    Passaporte(3),
+    CNH(4),
 }

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="date_title">When are you boarding?</string>
+    <string name="date_subtitle">Choose your travel date</string>
+    <string name="date_today">Today</string>
+    <string name="date_tomorrow">Tomorrow</string>
+    <string name="date_back">Back</string>
+    <string name="date_continue">Continue</string>
+    <string name="date_question">When do you want to travel?</string>
+    <string name="date_subhead">Select your boarding date to see available times.</string>
+    <string name="date_other_date">Other date</string>
+    <string name="date_prev_month">Previous month</string>
+    <string name="date_next_month">Next month</string>
+</resources>

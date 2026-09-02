@@ -1,5 +1,11 @@
 package com.example.passagenexpress.core.designsystem.component
 
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -14,6 +20,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Backspace
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.SpaceBar
@@ -29,6 +36,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -110,6 +118,9 @@ fun TotemAlphaKeypad(
         onDone = onDone,
         doneLabel = doneLabel,
         closeContentDesc = closeContentDesc,
+        // O Concluir vai como tecla própria (à direita da barra de espaço), então a barra
+        // full-width do frame é escondida — era ela que os usuários confundiam com o espaço.
+        showDoneButton = false,
         modifier = modifier,
     ) {
         if (symbols) {
@@ -118,6 +129,8 @@ fun TotemAlphaKeypad(
                 onBackspace = onBackspace,
                 onToggleLetters = { symbols = false },
                 onSpace = { onChar(' ') },
+                onDone = onDone,
+                doneContentDesc = doneLabel,
                 spaceContentDesc = spaceContentDesc,
                 deleteContentDesc = deleteContentDesc,
             )
@@ -132,6 +145,8 @@ fun TotemAlphaKeypad(
                 onBackspace = onBackspace,
                 onToggleSymbols = { symbols = true },
                 onSpace = { onChar(' ') },
+                onDone = onDone,
+                doneContentDesc = doneLabel,
                 shiftContentDesc = shiftContentDesc,
                 spaceContentDesc = spaceContentDesc,
                 deleteContentDesc = deleteContentDesc,
@@ -149,6 +164,7 @@ private fun KeypadFrame(
     doneLabel: String,
     closeContentDesc: String,
     modifier: Modifier = Modifier,
+    showDoneButton: Boolean = true,
     content: @Composable () -> Unit,
 ) {
     // Fundo do painel: azul translúcido (mesmo dos chips/pills da marca) — dá contraste pras
@@ -174,11 +190,14 @@ private fun KeypadFrame(
                         style = MaterialTheme.typography.labelLarge,
                         color = TotemPalette.InkMuted,
                     )
-                    Text(
-                        text = currentValue.ifEmpty { "—" },
-                        style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.SemiBold),
-                        color = TotemPalette.Ink,
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = currentValue,
+                            style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.SemiBold),
+                            color = TotemPalette.Ink,
+                        )
+                        BlinkingCursor()
+                    }
                 }
                 IconButton(onClick = onClose) {
                     Icon(
@@ -189,13 +208,37 @@ private fun KeypadFrame(
                 }
             }
             content()
-            TotemPrimaryButton(
-                text = doneLabel,
-                onClick = onDone,
-                modifier = Modifier.fillMaxWidth(),
-            )
+            if (showDoneButton) {
+                TotemPrimaryButton(
+                    text = doneLabel,
+                    onClick = onDone,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
         }
     }
+}
+
+/** Cursor vertical piscando, ao lado do texto digitado. */
+@Composable
+private fun BlinkingCursor() {
+    val transition = rememberInfiniteTransition(label = "cursor")
+    val alpha by transition.animateFloat(
+        initialValue = 1f,
+        targetValue = 0f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 550, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "cursorAlpha",
+    )
+    Box(
+        modifier = Modifier
+            .padding(start = 3.dp)
+            .size(width = 2.dp, height = 28.dp)
+            .alpha(alpha)
+            .background(TotemPalette.Accent, RoundedCornerShape(1.dp)),
+    )
 }
 
 @Composable
@@ -231,6 +274,8 @@ private fun LetterGrid(
     onBackspace: () -> Unit,
     onToggleSymbols: () -> Unit,
     onSpace: () -> Unit,
+    onDone: () -> Unit,
+    doneContentDesc: String,
     shiftContentDesc: String,
     spaceContentDesc: String,
     deleteContentDesc: String,
@@ -269,19 +314,28 @@ private fun LetterGrid(
                 modifier = Modifier.weight(1.4f),
             )
         }
+        // Faixa de acentos precompostos (adaptação ABNT para o totem).
+        KeyRow {
+            accents.forEach { c ->
+                CharKey(display(c).toString(), { onChar(c) }, modifier = Modifier.weight(1f))
+            }
+        }
+        // Linha de ação padrão: ?123 | ESPAÇO (barra larga) | Concluir ✓.
         KeyRow {
             UtilityKey(
                 text = "?123",
                 onClick = onToggleSymbols,
-                modifier = Modifier.weight(1.4f),
+                modifier = Modifier.weight(1.5f),
             )
-            accents.forEach { c ->
-                CharKey(display(c).toString(), { onChar(c) }, modifier = Modifier.weight(1f))
-            }
             SpaceKey(
                 onClick = onSpace,
                 contentDescription = spaceContentDesc,
-                modifier = Modifier.weight(1.4f),
+                modifier = Modifier.weight(6f),
+            )
+            DoneKey(
+                onClick = onDone,
+                contentDescription = doneContentDesc,
+                modifier = Modifier.weight(1.5f),
             )
         }
     }
@@ -293,6 +347,8 @@ private fun SymbolGrid(
     onBackspace: () -> Unit,
     onToggleLetters: () -> Unit,
     onSpace: () -> Unit,
+    onDone: () -> Unit,
+    doneContentDesc: String,
     spaceContentDesc: String,
     deleteContentDesc: String,
 ) {
@@ -314,7 +370,7 @@ private fun SymbolGrid(
             UtilityKey(
                 text = "ABC",
                 onClick = onToggleLetters,
-                modifier = Modifier.weight(1.4f),
+                modifier = Modifier.weight(1.2f),
             )
             SpaceKey(
                 onClick = onSpace,
@@ -324,7 +380,12 @@ private fun SymbolGrid(
             BackspaceKey(
                 onBackspace = onBackspace,
                 contentDescription = deleteContentDesc,
-                modifier = Modifier.weight(1.4f),
+                modifier = Modifier.weight(1.2f),
+            )
+            DoneKey(
+                onClick = onDone,
+                contentDescription = doneContentDesc,
+                modifier = Modifier.weight(1.2f),
             )
         }
     }
@@ -413,6 +474,28 @@ private fun SpaceKey(
             imageVector = Icons.Filled.SpaceBar,
             contentDescription = contentDescription,
             tint = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.size(28.dp),
+        )
+    }
+}
+
+/** Tecla de concluir — cor de destaque + ✓, distinta da barra de espaço. */
+@Composable
+private fun DoneKey(
+    onClick: () -> Unit,
+    contentDescription: String,
+    modifier: Modifier = Modifier,
+) {
+    KeyButton(
+        onClick = onClick,
+        modifier = modifier,
+        baseColor = TotemPalette.Accent,
+        contentColor = TotemPalette.Paper,
+    ) {
+        Icon(
+            imageVector = Icons.Filled.Check,
+            contentDescription = contentDescription,
+            tint = TotemPalette.Paper,
             modifier = Modifier.size(28.dp),
         )
     }

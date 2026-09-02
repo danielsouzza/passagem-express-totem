@@ -32,7 +32,7 @@ fun TotemPrimaryButton(
     enabled: Boolean = true,
     leading: (@Composable () -> Unit)? = null,
     trailingArrow: Boolean = true,
-    accent: Boolean = false,
+    accent: Boolean = true,
 ) {
     val container = if (accent) TotemPalette.Accent else TotemPalette.Ink
     val disabled = TotemPalette.PaperDim

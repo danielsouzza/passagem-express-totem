@@ -94,6 +94,7 @@ private fun CityContent(
 
     TotemScreenScaffold(
         step = 1,
+        showCancel = false,
         title = stringRes(R.string.city_destino_title),
         subtitle = subtitle,
         footer = {
@@ -210,6 +211,8 @@ private fun DestinoPicker(
  * Wrapper que entra em cena com fade + slide-up, com delay escalonado pelo índice.
  * Dá efeito de cascata nos cards quando a tela monta a primeira vez.
  */
+private const val MAX_STAGGER_INDEX = 8
+
 @Composable
 private fun StaggeredItem(index: Int, content: @Composable () -> Unit) {
     // `MutableTransitionState(false)` + alterar pra true após composição garante que
@@ -218,11 +221,14 @@ private fun StaggeredItem(index: Int, content: @Composable () -> Unit) {
     val visibility = remember(index) {
         MutableTransitionState(false).apply { targetState = true }
     }
+    // Capamos o stagger nos primeiros itens — sem isso, com muitos destinos o último item
+    // esperava índice*35ms (>1s) só pra começar a animar, dando a sensação de lista lenta.
+    val staggerDelay = index.coerceAtMost(MAX_STAGGER_INDEX) * 35
     AnimatedVisibility(
         visibleState = visibility,
-        enter = fadeIn(animationSpec = tween(durationMillis = 260, delayMillis = index * 35)) +
+        enter = fadeIn(animationSpec = tween(durationMillis = 260, delayMillis = staggerDelay)) +
             slideInVertically(
-                animationSpec = tween(durationMillis = 320, delayMillis = index * 35),
+                animationSpec = tween(durationMillis = 320, delayMillis = staggerDelay),
                 initialOffsetY = { it / 5 },
             ),
     ) {

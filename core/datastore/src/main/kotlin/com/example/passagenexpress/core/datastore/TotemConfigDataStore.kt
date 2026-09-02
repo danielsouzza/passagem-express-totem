@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.example.passagenexpress.core.domain.model.AppLanguage
+import com.example.passagenexpress.core.domain.model.PaperWidth
 import com.example.passagenexpress.core.domain.model.Porto
 import com.example.passagenexpress.core.domain.model.TotemConfig
 import com.example.passagenexpress.core.domain.repository.TotemConfigRepository
@@ -35,6 +36,12 @@ class TotemConfigDataStore @Inject constructor(
             setupComplete = prefs[Keys.SetupComplete] ?: false,
             printerVendorId = prefs[Keys.PrinterVendorId],
             printerProductId = prefs[Keys.PrinterProductId],
+            printerPaperWidth = prefs[Keys.PrinterPaperWidth]
+                ?.let { name -> PaperWidth.entries.firstOrNull { it.name == name } }
+                ?: PaperWidth.MM58,
+            operatorPin = prefs[Keys.OperatorPin].orEmpty(),
+            embarcacaoId = prefs[Keys.EmbarcacaoId],
+            embarcacaoNome = prefs[Keys.EmbarcacaoNome].orEmpty(),
         )
     }
 
@@ -52,6 +59,28 @@ class TotemConfigDataStore @Inject constructor(
         }
     }
 
+    override suspend fun clearPorto() {
+        dataStore.edit {
+            it.remove(Keys.PortoId)
+            it.remove(Keys.PortoSlug)
+            it.remove(Keys.PortoNome)
+            it.remove(Keys.MunicipioCodigo)
+            it.remove(Keys.MunicipioNome)
+        }
+    }
+
+    override suspend fun setEmbarcacao(id: Long?, nome: String) {
+        dataStore.edit {
+            if (id == null) {
+                it.remove(Keys.EmbarcacaoId)
+                it.remove(Keys.EmbarcacaoNome)
+            } else {
+                it[Keys.EmbarcacaoId] = id
+                it[Keys.EmbarcacaoNome] = nome
+            }
+        }
+    }
+
     override suspend fun setPrinter(vendorId: Int, productId: Int) {
         dataStore.edit {
             it[Keys.PrinterVendorId] = vendorId
@@ -59,8 +88,16 @@ class TotemConfigDataStore @Inject constructor(
         }
     }
 
+    override suspend fun setPrinterPaperWidth(paperWidth: PaperWidth) {
+        dataStore.edit { it[Keys.PrinterPaperWidth] = paperWidth.name }
+    }
+
     override suspend fun setLanguage(language: AppLanguage) {
         dataStore.edit { it[Keys.Language] = language.tag }
+    }
+
+    override suspend fun setOperatorPin(pin: String) {
+        dataStore.edit { it[Keys.OperatorPin] = pin }
     }
 
     override suspend fun completeSetup() {
@@ -82,5 +119,9 @@ class TotemConfigDataStore @Inject constructor(
         val SetupComplete = booleanPreferencesKey("totem_setup_complete")
         val PrinterVendorId = intPreferencesKey("totem_printer_vendor_id")
         val PrinterProductId = intPreferencesKey("totem_printer_product_id")
+        val PrinterPaperWidth = stringPreferencesKey("totem_printer_paper_width")
+        val OperatorPin = stringPreferencesKey("totem_operator_pin")
+        val EmbarcacaoId = longPreferencesKey("totem_embarcacao_id")
+        val EmbarcacaoNome = stringPreferencesKey("totem_embarcacao_nome")
     }
 }

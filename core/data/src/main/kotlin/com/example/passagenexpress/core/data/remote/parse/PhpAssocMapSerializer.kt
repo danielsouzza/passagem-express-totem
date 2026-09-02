@@ -26,11 +26,19 @@ class PhpAssocMapSerializer<V>(
             ?: return mapDelegate.deserialize(decoder)
         val element = jsonDecoder.decodeJsonElement()
         return when (element) {
-            is JsonArray -> if (element.isEmpty()) emptyMap() else error(
-                "Expected JSON object for map, got non-empty array: $element",
-            )
             is JsonObject -> jsonDecoder.json.decodeFromJsonElement(mapDelegate, element)
-            else -> error("Expected object or empty array, got $element")
+            // `[]` = map vazio (quirk do PHP). Qualquer outra forma inesperada (array não-vazio,
+            // primitivo, null) é tolerada como mapa vazio em vez de lançar — o totem não pode
+            // fechar por causa de um formato fora do padrão.
+            else -> {
+                if (!(element is JsonArray && element.isEmpty())) {
+                    android.util.Log.w(
+                        "PhpAssocMapSerializer",
+                        "Esperado objeto ou array vazio para o map, recebido: $element — usando mapa vazio",
+                    )
+                }
+                emptyMap()
+            }
         }
     }
 

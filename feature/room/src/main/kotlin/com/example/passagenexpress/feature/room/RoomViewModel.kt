@@ -3,6 +3,7 @@ package com.example.passagenexpress.feature.room
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.passagenexpress.core.common.coroutine.AppScope
 import com.example.passagenexpress.core.common.result.AppResult
 import com.example.passagenexpress.core.domain.model.Comodo
 import com.example.passagenexpress.core.domain.model.ComodoLivre
@@ -39,6 +40,13 @@ class RoomViewModel @Inject constructor(
 
     private val trecho: Trecho = decodeTrechoArg(rawTrechoArg).toDomain()
 
+    /**
+     * Vira `true` quando a venda é iniciada (holds viram um pedido). A partir daí NÃO liberamos as
+     * reservas ao sair da tela — quem cuida delas passa a ser o ciclo do pedido/pagamento.
+     */
+    @Volatile
+    private var saleCommitted = false
+
     private val _uiState = MutableStateFlow(RoomUiState(trecho = trecho))
     val uiState: StateFlow<RoomUiState> = _uiState.asStateFlow()
 
@@ -47,6 +55,13 @@ class RoomViewModel @Inject constructor(
     }
 
     fun onRetry() = load()
+
+    /**
+     * Consome o evento one-shot de "venda iniciada" depois que a tela já navegou pra Passenger.
+     * Sem isso, o StateFlow re-emite `saleStarted` quando o usuário volta pra cá e o
+     * LaunchedEffect re-dispara a navegação, re-avançando sozinho.
+     */
+    fun onSaleStartedHandled() = _uiState.update { it.copy(saleStarted = null) }
 
     fun onClickComodoIndividual(comodo: Comodo) {
         if (_uiState.value.reservaInFlight) return
@@ -111,8 +126,20 @@ class RoomViewModel @Inject constructor(
                 comodosAssentosEscolhidos = sel.porId.map { it.id },
             )
             when (result) {
-                is AppResult.Success -> _uiState.update {
-                    it.copy(saleStarted = result.value, startingSale = false)
+                is AppResult.Success -> {
+                    // Venda iniciada: as reservas agora pertencem ao pedido; não liberar no onCleared.
+                    saleCommitted = true
+                    // Expande cada cômodo pela capacidade cheia (camarote de N → N entradas),
+                    // espelhando o `populateComodos` do site: N entradas → N formulários de passageiro.
+                    // A escolha de "ir sozinho" (remover ocupante extra) acontece na tela de dados.
+                    val expandido = result.value.copy(
+                        comodos = result.value.comodos.flatMap { c ->
+                            List(c.quantidade.coerceAtLeast(1)) { c }
+                        },
+                    )
+                    _uiState.update {
+                        it.copy(saleStarted = expandido, startingSale = false)
+                    }
                 }
                 is AppResult.Failure -> _uiState.update {
                     it.copy(
@@ -125,13 +152,18 @@ class RoomViewModel @Inject constructor(
     }
 
     /**
-     * Releases all in-flight reservations on back. Best-effort: we don't surface failures
-     * to the user since they're already navigating away.
+     * Libera as reservas ao sair da tela sem ter iniciado a venda — cobre TODOS os caminhos de
+     * saída que removem a tela da pilha: voltar, cancelar, início e back de hardware.
+     *
+     * Roda no [AppScope] (vida do processo) de propósito: o `viewModelScope` já está sendo
+     * cancelado neste ponto, então uma chamada de rede lançada nele seria abortada. Best-effort —
+     * o usuário já está saindo, falhas não sobem à UI.
      */
-    fun onAbandonScreen() {
+    override fun onCleared() {
+        if (saleCommitted) return
         val ids = _uiState.value.selecionados.porId.map { it.id }
         if (ids.isEmpty()) return
-        viewModelScope.launch {
+        AppScope.launch {
             deletarReserva(trecho.id, trecho.idViagem, ids)
         }
     }
@@ -190,7 +222,9 @@ class RoomViewModel @Inject constructor(
         _uiState.update { state ->
             state.copy(
                 reservaInFlight = true,
-                selecionados = state.selecionados.copy(porId = state.selecionados.porId + comodo),
+                selecionados = state.selecionados.copy(
+                    porId = state.selecionados.porId + comodo,
+                ),
             )
         }
         viewModelScope.launch {

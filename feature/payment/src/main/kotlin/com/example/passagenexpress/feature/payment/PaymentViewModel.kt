@@ -191,7 +191,8 @@ class PaymentViewModel @Inject constructor(
                         )
                     }
                     startCardTimer()
-                    startCardPolling(r.value.id)
+                    // Polling/cancel são chaveados pelo id do pedido (não pelo order_id).
+                    startCardPolling(pedido.id)
                 }
                 is AppResult.Failure -> _uiState.update {
                     it.copy(
@@ -254,11 +255,13 @@ class PaymentViewModel @Inject constructor(
                 }
             }
             PaymentMethod.Card -> {
-                val orderId = _uiState.value.card.orderId
+                // Só cancela se já houve order criada (orderId != null); a chamada usa o id do pedido.
+                val hadOrder = _uiState.value.card.orderId != null
+                val pedidoId = _uiState.value.pedido?.id
                 cardPollingJob?.cancel()
                 cardTimerJob?.cancel()
                 _uiState.update { it.copy(card = CardState()) }
-                if (orderId != null) fireAndForgetCancel(orderId)
+                if (hadOrder && pedidoId != null) fireAndForgetCancel(pedidoId)
             }
         }
     }
@@ -274,7 +277,10 @@ class PaymentViewModel @Inject constructor(
         val stillOpen = card.stage is CardStage.Waiting ||
             card.stage is CardStage.Processing ||
             card.stage is CardStage.Creating
-        if (stillOpen) card.orderId?.let { fireAndForgetCancel(it) }
+        // Só cancela se a order já foi criada (orderId != null); cancela pelo id do pedido.
+        if (stillOpen && card.orderId != null) {
+            _uiState.value.pedido?.id?.let { fireAndForgetCancel(it) }
+        }
     }
 
     private fun startCriarPedido() {
@@ -339,13 +345,13 @@ class PaymentViewModel @Inject constructor(
      * antes de desistir; encerra ao atingir um status terminal ou ao ser cancelado pelo
      * timeout job.
      */
-    private fun startCardPolling(orderId: String) {
+    private fun startCardPolling(pedidoId: Long) {
         cardPollingJob?.cancel()
         cardPollingJob = viewModelScope.launch {
             var consecutiveFailures = 0
             while (true) {
                 delay(CARD_POLLING_INTERVAL_MS)
-                when (val r = obterPointTapStatus(orderId)) {
+                when (val r = obterPointTapStatus(pedidoId)) {
                     is AppResult.Success -> {
                         consecutiveFailures = 0
                         val result = r.value
@@ -362,7 +368,7 @@ class PaymentViewModel @Inject constructor(
                         }
                         if (result.status.isTerminal) {
                             cardTimerJob?.cancel()
-                            if (result.status == PointTapStatus.Finished) {
+                            if (result.status == PointTapStatus.Paid) {
                                 val pedidoId = _uiState.value.pedido?.id
                                 if (pedidoId != null) {
                                     _uiState.update {
@@ -418,24 +424,28 @@ class PaymentViewModel @Inject constructor(
                 _uiState.value.card.stage.let { it !is CardStage.Success }
             ) {
                 cardPollingJob?.cancel()
-                val orderId = _uiState.value.card.orderId
+                val pedidoId = _uiState.value.pedido?.id
                 _uiState.update { it.copy(card = it.card.copy(stage = CardStage.Timeout)) }
-                if (orderId != null) fireAndForgetCancel(orderId)
+                if (pedidoId != null) fireAndForgetCancel(pedidoId)
             }
         }
     }
 
-    private fun fireAndForgetCancel(orderId: String) {
+    private fun fireAndForgetCancel(pedidoId: Long) {
         viewModelScope.launch {
             withContext(NonCancellable) {
-                cancelarPointTapOrder(orderId)
+                cancelarPointTapOrder(pedidoId)
             }
         }
     }
 
     private fun initialState(): PaymentUiState {
         val taxa = trecho.taxaDeEmbarque
-        val totalPassagens = passageiros.sumOf { p -> trecho.precoBaseComDesconto(p.comodo.valor) }
+        // A diária de cada cômodo é cobrada 1× (camarote de 2 conta uma vez só, o 2º ocupante
+        // não paga passagem); a taxa de embarque é por ocupante. Espelha `calculateTotal` do site.
+        val totalPassagens = passageiros
+            .distinctBy { it.comodo.id }
+            .sumOf { p -> trecho.precoBaseComDesconto(p.comodo.valor) }
         val totalTaxas = passageiros.size * taxa
         // Totem coleta menos campos que a web: não há mais o bloco "Dados para Contato" nem o
         // checkbox `isContact` — o passageiro #1 vira o contato por convenção.
@@ -490,8 +500,13 @@ class PaymentViewModel @Inject constructor(
         // Web monta `desconto_id: trecho.desconto?.id ?? null` em cada item de `dataComodos`
         // (home.vue#populateComodos:431). Se o trecho não tem desconto, manda null.
         val descontoId = trecho.desconto?.id
+        // Ocupantes efetivos por camarote = nº de passageiros que compartilham o mesmo `comodo.id`.
+        val ocupantesPorComodo = passageiros.groupingBy { it.comodo.id }.eachCount()
+        val comodosVistos = mutableSetOf<Long>()
         val itens = passageiros.mapIndexed { index, p ->
             val domain = p.toPassageiroDomain()
+            // Primeiro passageiro de cada camarote = pivô; os demais são filhos ligados a ele.
+            val isPivo = comodosVistos.add(p.comodo.id)
             ItemPedido(
                 comodoId = p.comodo.id,
                 tipoComodidadeId = p.comodo.tipoComodidadeId,
@@ -500,28 +515,32 @@ class PaymentViewModel @Inject constructor(
                 taxaEmbarque = trecho.taxaDeEmbarque,
                 descontoId = descontoId,
                 isContact = index == 0,
+                comodoRelacionado = if (isPivo) null else p.comodo.id,
+                comodosFilhos = if (isPivo) p.comodo.quantidade.coerceAtLeast(1) else 1,
+                qtdComodosFilhos = if (isPivo) (ocupantesPorComodo[p.comodo.id] ?: 1) else 1,
             )
         }
         return NovoPedido(
             trechoId = trecho.id,
             viagemId = trecho.idViagem,
             dataHora = trecho.dataEmbarque.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")),
-            totalPassagens = itens.sumOf { it.valor },
+            // Passagem cobrada 1× por cômodo (pivô); taxa por ocupante. Cada item ainda leva
+            // `valor` = diária no payload (igual ao site), mas o total soma a diária uma vez só.
+            totalPassagens = itens.distinctBy { it.comodoId }.sumOf { it.valor },
             totalTaxas = itens.sumOf { it.taxaEmbarque },
-            total = itens.sumOf { it.valor + it.taxaEmbarque },
+            total = itens.distinctBy { it.comodoId }.sumOf { it.valor } + itens.sumOf { it.taxaEmbarque },
             contato = contato,
             itens = itens,
         )
     }
 
     private fun mapCardStage(status: PointTapStatus): CardStage = when (status) {
-        PointTapStatus.Open -> CardStage.Waiting
-        PointTapStatus.Processing -> CardStage.Processing
-        PointTapStatus.Finished -> CardStage.Success
-        PointTapStatus.Canceled -> CardStage.Canceled
-        // Stage.Failed carrega o motivo no texto. Para o ERROR do gateway, copy genérica
-        // "Falha no pagamento" — a tela mapeia esse marker pra mensagem amigável.
-        PointTapStatus.Error -> CardStage.Failed(CARD_ERROR_GENERIC)
+        // Pending = order OPEN / pedido Solicitado/Em venda — aguardando o cartão na maquininha.
+        PointTapStatus.Pending -> CardStage.Waiting
+        PointTapStatus.Paid -> CardStage.Success
+        // Negado pelo gateway. Stage.Failed carrega um marker que a tela troca por uma copy
+        // amigável ("Pagamento recusado…").
+        PointTapStatus.Denied -> CardStage.Failed(CARD_PAYMENT_DENIED)
     }
 
     companion object {
@@ -533,6 +552,9 @@ class PaymentViewModel @Inject constructor(
 
         /** Marker para a tela trocar pela string `payment_card_failed`. */
         const val CARD_ERROR_GENERIC = "card_error_generic"
+
+        /** Marker para a tela trocar pela string `payment_card_denied` (pagamento recusado). */
+        const val CARD_PAYMENT_DENIED = "card_payment_denied"
 
         private const val PIX_TIMEOUT_SECONDS = 30 * 60
         private const val POLLING_INTERVAL_MS = 10_000L

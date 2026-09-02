@@ -34,6 +34,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -52,9 +53,15 @@ import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
 import java.util.Locale
 
-private val Locale_BR: Locale = Locale.forLanguageTag("pt-BR")
-private val DAY_MONTH_FORMATTER: DateTimeFormatter =
-    DateTimeFormatter.ofPattern("dd 'de' MMMM", Locale_BR)
+/**
+ * Formatador "dia + mês" sensível ao idioma. PT usa "dd 'de' MMMM" (ex.: 16 de junho);
+ * demais idiomas usam "MMMM d" (ex.: June 16). O locale vem de `LocalConfiguration`,
+ * que é sobrescrito em runtime pelo toggle PT/EN.
+ */
+private fun dayMonthFormatter(locale: Locale): DateTimeFormatter {
+    val pattern = if (locale.language == "pt") "dd 'de' MMMM" else "MMMM d"
+    return DateTimeFormatter.ofPattern(pattern, locale)
+}
 
 @Composable
 fun DateScreen(
@@ -188,8 +195,9 @@ private fun QuickTile(
                     ),
                     color = titleColor,
                 )
+                val locale = LocalConfiguration.current.locales[0]
                 Text(
-                    text = date.format(DAY_MONTH_FORMATTER),
+                    text = date.format(dayMonthFormatter(locale)),
                     style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
                     color = subColor,
                 )
@@ -246,9 +254,10 @@ private fun MonthHeader(
     onPrev: () -> Unit,
     onNext: () -> Unit,
 ) {
+    val locale = LocalConfiguration.current.locales[0]
     val monthLabel = state.visibleMonth.month
-        .getDisplayName(TextStyle.FULL, Locale_BR)
-        .replaceFirstChar { it.uppercase(Locale_BR) } +
+        .getDisplayName(TextStyle.FULL, locale)
+        .replaceFirstChar { it.uppercase(locale) } +
         " " + state.visibleMonth.year
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -336,14 +345,15 @@ private fun WeekdayHeader() {
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(TotemTheme.dimens.space4),
     ) {
+        val locale = LocalConfiguration.current.locales[0]
         ORDERED_DOW.forEach { dow ->
             Box(
                 modifier = Modifier.weight(1f),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
-                    text = dow.getDisplayName(TextStyle.SHORT_STANDALONE, Locale_BR)
-                        .uppercase(Locale_BR)
+                    text = dow.getDisplayName(TextStyle.SHORT_STANDALONE, locale)
+                        .uppercase(locale)
                         .take(3),
                     style = MaterialTheme.typography.labelSmall.copy(
                         fontWeight = FontWeight.Bold,

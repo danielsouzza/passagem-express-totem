@@ -18,7 +18,8 @@ class IdleViewModel @Inject constructor(
     val uiState: StateFlow<IdleUiState> = observarTotemConfig()
         .map { config ->
             IdleUiState(
-                portoNome = config.portoNome,
+                // Sem porto (totem a bordo): mostra o nome da embarcação no lugar do porto.
+                portoNome = config.portoNome.ifEmpty { config.embarcacaoNome },
                 defaultLanguage = config.defaultLanguage,
             )
         }

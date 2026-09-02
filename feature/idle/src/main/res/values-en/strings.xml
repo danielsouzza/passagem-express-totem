@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="idle_brand">Passagem Express</string>
+    <string name="idle_tap_to_start">Tap to start</string>
+    <string name="idle_tagline">Buy your ticket and board in under a minute.</string>
+    <string name="idle_terminal_fallback">Maritime Terminal</string>
+    <string name="idle_settings">Settings</string>
+</resources>

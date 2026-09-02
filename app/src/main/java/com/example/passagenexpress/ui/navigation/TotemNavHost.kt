@@ -6,10 +6,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
-import com.example.passagenexpress.feature.city.navigation.CITY_ROUTE
-import com.example.passagenexpress.feature.city.navigation.cityScreen
-import com.example.passagenexpress.feature.date.navigation.dateRoute
-import com.example.passagenexpress.feature.date.navigation.dateScreen
 import com.example.passagenexpress.feature.idle.navigation.IDLE_ROUTE
 import com.example.passagenexpress.feature.idle.navigation.idleScreen
 import com.example.passagenexpress.feature.passenger.navigation.passengerRoute
@@ -20,9 +16,11 @@ import com.example.passagenexpress.feature.print.navigation.printRoute
 import com.example.passagenexpress.feature.print.navigation.printScreen
 import com.example.passagenexpress.feature.room.navigation.roomRoute
 import com.example.passagenexpress.feature.room.navigation.roomScreen
+import com.example.passagenexpress.feature.settings.navigation.SETTINGS_ROUTE
+import com.example.passagenexpress.feature.settings.navigation.settingsScreen
 import com.example.passagenexpress.feature.setup.navigation.SETUP_ROUTE
 import com.example.passagenexpress.feature.setup.navigation.setupScreen
-import com.example.passagenexpress.feature.trip.navigation.tripRoute
+import com.example.passagenexpress.feature.trip.navigation.TRIP_ROUTE
 import com.example.passagenexpress.feature.trip.navigation.tripScreen
 
 @Composable
@@ -52,7 +50,7 @@ fun TotemNavHost(
         )
         idleScreen(
             onStart = {
-                navController.navigate(CITY_ROUTE) {
+                navController.navigate(TRIP_ROUTE) {
                     launchSingleTop = true
                 }
             },
@@ -62,25 +60,15 @@ fun TotemNavHost(
                     launchSingleTop = true
                 }
             },
-        )
-        cityScreen(
-            onDestinoSelected = { destino ->
-                navController.navigate(dateRoute(destino.slug, destino.nome)) {
+            onSettings = {
+                navController.navigate(SETTINGS_ROUTE) {
                     launchSingleTop = true
                 }
             },
+        )
+        settingsScreen(
             onBack = {
                 navController.popBackStack(IDLE_ROUTE, inclusive = false)
-            },
-        )
-        dateScreen(
-            onDateConfirmed = { destinoSlug, destinoNome, date ->
-                navController.navigate(tripRoute(destinoSlug, destinoNome, date)) {
-                    launchSingleTop = true
-                }
-            },
-            onBack = {
-                navController.popBackStack()
             },
         )
         tripScreen(
@@ -138,5 +126,5 @@ fun TotemNavHost(
     }
 }
 
-private const val NAV_TRANSITION_MS = 280
+private const val NAV_TRANSITION_MS = 220
 

@@ -1,5 +1,6 @@
 package com.example.passagenexpress.core.data.remote.api
 
+import com.example.passagenexpress.core.data.remote.dto.EmbarcacaoDto
 import com.example.passagenexpress.core.data.remote.dto.FiltrosResponseDto
 import com.example.passagenexpress.core.data.remote.dto.PassageiroDto
 import com.example.passagenexpress.core.data.remote.dto.PortoDto
@@ -11,6 +12,9 @@ import retrofit2.http.Query
 interface ViagemApi {
     @GET("api/filtros/portos")
     suspend fun getPortos(): ApiEnvelope<List<PortoDto>>
+
+    @GET("api/embarcacoes")
+    suspend fun getEmbarcacoes(): ApiEnvelope<List<EmbarcacaoDto>>
 
     @GET("api/filtros")
     suspend fun getFiltros(
@@ -26,6 +30,7 @@ interface ViagemApi {
         @Query("data_hora") dataHora: String? = null,
         @Query("quantia") quantia: Int = 10,
         @Query("data_irrestrita") dataIrrestrita: Int? = null,
+        @Query("embarcacao_id") embarcacaoId: Long? = null,
     ): ApiEnvelope<TrechosViagemResponseDto>
 
     /**

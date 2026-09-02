@@ -2,13 +2,18 @@ package com.example.passagenexpress.core.printer.escpos
 
 import java.io.ByteArrayOutputStream
 import java.nio.charset.Charset
+import java.text.Normalizer
 
 /**
  * Acumulador de bytes ESC/POS com os comandos usados pelo bilhete. O alvo é uma 58mm
- * genérica (384 dots, ~32 colunas na Fonte A). Texto é encodado em CP850 (PC-850
- * Multilingual) pra sair com acento — code page selecionada no [reset] via `ESC t`.
+ * genérica (384 dots, ~32 colunas na Fonte A). **A impressora do totem só aceita ASCII** e
+ * trava com bytes fora de `0x20–0x7E`, então todo texto passa por [toAscii] antes de ser
+ * encodado: acentos PT são transliterados (á→a, ç→c, ã→a…) e qualquer outro caractere vira
+ * espaço. O [charset] é mantido só por segurança — após o sanitize a saída já é ASCII puro.
  */
 internal class EscPosWriter(
+    /** Colunas da Fonte A pra esta bobina (58mm=32, 80mm=48). */
+    val columns: Int = COLUMNS,
     private val charset: Charset = runCatching { Charset.forName("IBM850") }.getOrElse { Charsets.US_ASCII },
 ) {
     private val out = ByteArrayOutputStream()
@@ -35,7 +40,7 @@ internal class EscPosWriter(
         return raw(0x1D, 0x21, w or h)
     }
 
-    fun text(s: String): EscPosWriter = raw(s.toByteArray(charset))
+    fun text(s: String): EscPosWriter = raw(toAscii(s).toByteArray(charset))
 
     fun line(s: String = ""): EscPosWriter = text(s).raw(0x0A)
 
@@ -47,6 +52,45 @@ internal class EscPosWriter(
     companion object {
         /** Colunas na Fonte A do 58mm. */
         const val COLUMNS = 32
+
+        /**
+         * Reduz qualquer string a ASCII imprimível (`0x20–0x7E`, + `\n`/`\t`), que é o único
+         * conjunto que a impressora do totem aceita sem travar:
+         *  1. Símbolos tipográficos comuns (travessão, aspas curvas, reticências, nbsp, bullet)
+         *     viram seus equivalentes ASCII;
+         *  2. `NFKD` decompõe acentos/ordinais/ligaduras (á→a+◌́, º→o, ½→1/2…);
+         *  3. marcas diacríticas combinantes são descartadas (sobra a letra-base);
+         *  4. qualquer outro não-ASCII vira espaço — preserva a largura/alinhamento da coluna
+         *     sem arriscar um byte que derrube a impressora.
+         */
+        fun toAscii(s: String): String {
+            val pre = buildString(s.length) {
+                for (ch in s) {
+                    append(
+                        when (ch) {
+                            '–', '—', '−' -> "-"        // – — −
+                            '“', '”', '„', '«', '»' -> "\"" // “ ” „ « »
+                            '‘', '’', '‚', '`' -> "'"  // ‘ ’ ‚ `
+                            '…' -> "..."                          // …
+                            ' ' -> " "                            // nbsp
+                            '•', '·' -> "-"                  // • ·
+                            else -> ch.toString()
+                        }
+                    )
+                }
+            }
+            val decomposed = Normalizer.normalize(pre, Normalizer.Form.NFKD)
+            return buildString(decomposed.length) {
+                for (ch in decomposed) {
+                    when {
+                        ch == '\n' || ch == '\t' -> append(ch)
+                        ch.code in 0x20..0x7E -> append(ch)
+                        ch.code in 0x0300..0x036F -> {} // diacrítico combinante — descarta
+                        else -> append(' ')
+                    }
+                }
+            }
+        }
     }
 
     enum class Align(val n: Int) { LEFT(0), CENTER(1), RIGHT(2) }

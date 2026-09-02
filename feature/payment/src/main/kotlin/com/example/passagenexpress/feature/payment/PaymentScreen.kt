@@ -22,6 +22,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.Pix
+import androidx.compose.material.icons.filled.WarningAmber
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -134,7 +135,8 @@ private fun PaymentContent(
     } else null
 
     TotemScreenScaffold(
-        step = 6,
+        step = 4,
+        totalSteps = 4,
         title = stringRes(R.string.payment_title),
         subtitle = subtitle,
         footer = {
@@ -143,7 +145,7 @@ private fun PaymentContent(
                 if (trecho != null) {
                     Column(horizontalAlignment = Alignment.End) {
                         Text(
-                            text = "TOTAL",
+                            text = stringRes(R.string.payment_total_label),
                             style = MaterialTheme.typography.labelSmall.copy(
                                 fontWeight = FontWeight.Bold,
                                 letterSpacing = 1.4.sp,
@@ -425,6 +427,7 @@ private fun CardSection(
             verticalArrangement = Arrangement.spacedBy(TotemTheme.dimens.space20),
         ) {
             CardHeader()
+            TerminalChargeWarning()
             CardTypeSelector(selected = options.type, onSelect = onSelectCardType)
             if (options.type == CardType.Credit) {
                 InstallmentsSelector(
@@ -439,6 +442,52 @@ private fun CardSection(
                 accent = true,
                 modifier = Modifier.fillMaxWidth(),
             )
+        }
+    }
+}
+
+/**
+ * Aviso pré-pagamento: a maquininha (terminal externo) pode ficar com uma cobrança pendurada
+ * de uma tentativa anterior. Não é o ideal, mas pedimos pro operador/cliente conferir e cancelar
+ * no próprio terminal antes de iniciar uma nova cobrança.
+ */
+/**
+ * Aviso (não erro): cor de warning âmbar (`WarningLight`/`WarningDark`), não o vermelho de erro.
+ * Título em destaque + corpo para o operador/cliente realmente ler antes de iniciar a cobrança.
+ */
+@Composable
+private fun TerminalChargeWarning() {
+    Surface(
+        shape = RoundedCornerShape(TotemTheme.dimens.radiusSm),
+        color = TotemPalette.WarningLight,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Row(
+            modifier = Modifier.padding(TotemTheme.dimens.space16),
+            horizontalArrangement = Arrangement.spacedBy(TotemTheme.dimens.space12),
+            verticalAlignment = Alignment.Top,
+        ) {
+            Icon(
+                imageVector = Icons.Filled.WarningAmber,
+                contentDescription = null,
+                tint = TotemPalette.Warning,
+                modifier = Modifier.size(28.dp),
+            )
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(TotemTheme.dimens.space4),
+            ) {
+                Text(
+                    text = stringRes(R.string.payment_card_terminal_warning_title),
+                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                    color = TotemPalette.WarningDark,
+                )
+                Text(
+                    text = stringRes(R.string.payment_card_terminal_warning),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = TotemPalette.WarningDark,
+                )
+            }
         }
     }
 }

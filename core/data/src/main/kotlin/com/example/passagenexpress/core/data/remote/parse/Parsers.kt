@@ -59,5 +59,6 @@ fun String?.parseTempoViagemMinutos(): Int {
         val m = parts.getOrNull(1)?.toIntOrNull() ?: 0
         return h * 60 + m
     }
-    return text.toIntOrNull() ?: 0
+    // Número puro = HORAS (padrão do backend), ex.: "48" = 48h. Ver formatarTempoViagem no web.
+    return (text.toIntOrNull() ?: 0) * 60
 }

@@ -82,7 +82,10 @@ fun RoomScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val sale = state.saleStarted
     if (sale != null) {
-        androidx.compose.runtime.LaunchedEffect(sale) { onSaleStarted(sale, viewModel.rawTrechoArg) }
+        androidx.compose.runtime.LaunchedEffect(sale) {
+            onSaleStarted(sale, viewModel.rawTrechoArg)
+            viewModel.onSaleStartedHandled()
+        }
     }
     RoomContent(
         state = state,
@@ -93,10 +96,9 @@ fun RoomScreen(
         onRemoveTipo = viewModel::onRemoveTipo,
         onContinue = viewModel::onAvancar,
         onRetry = viewModel::onRetry,
-        onBack = {
-            viewModel.onAbandonScreen()
-            onBack()
-        },
+        // Liberação das reservas acontece no RoomViewModel.onCleared() (cobre voltar, cancelar,
+        // início e back de hardware de forma uniforme). Aqui só navegamos.
+        onBack = onBack,
         onDismissError = viewModel::dismissError,
     )
 }
@@ -119,7 +121,8 @@ private fun RoomContent(
     val canContinue = trecho != null && !state.selecionados.isEmpty() && !state.startingSale
 
     TotemScreenScaffold(
-        step = 4,
+        step = 2,
+        totalSteps = 4,
         title = stringRes(R.string.room_title),
         footer = {
             TotemSecondaryButton(text = stringRes(R.string.room_back), onClick = onBack)
@@ -227,9 +230,9 @@ private fun Legend() {
         horizontalArrangement = Arrangement.spacedBy(TotemTheme.dimens.space32, Alignment.CenterHorizontally),
         verticalAlignment = Alignment.Top,
     ) {
-        LegendDot(color = LegendColors.Unavailable, label = stringRes(R.string.room_legend_unavailable))
-        LegendDot(color = LegendColors.Selected, label = stringRes(R.string.room_legend_selected))
         LegendDot(color = LegendColors.Free, label = stringRes(R.string.room_legend_free))
+        LegendDot(color = LegendColors.Selected, label = stringRes(R.string.room_legend_selected))
+        LegendDot(color = LegendColors.Unavailable, label = stringRes(R.string.room_legend_unavailable))
     }
 }
 
@@ -338,7 +341,7 @@ private fun SeatChip(
     modifier: Modifier = Modifier,
 ) {
     val bg = when {
-        comodo == null -> Color.Transparent
+        comodo == null -> LegendColors.Empty
         comodo.isOcupado -> LegendColors.Unavailable
         selected -> LegendColors.Selected
         else -> LegendColors.Free
@@ -832,13 +835,17 @@ private fun TransientErrorBanner(message: String, onDismiss: () -> Unit) {
     }
 }
 
+// Cores espelhadas do site (Tailwind em StepSelecionarComodo.vue): livre = green-500,
+// selecionado = blue-500, indisponível/ocupado = gray-400. Célula vazia = gray-200.
 private object LegendColors {
-    val Free = TotemPalette.PaperDim
-    val Selected = TotemPalette.Accent
-    val Unavailable = TotemPalette.Ink
+    val Free = Color(0xFF22C55E) // green-500
+    val Selected = Color(0xFF3B82F6) // blue-500
+    val Unavailable = Color(0xFF9CA3AF) // gray-400
+    val Empty = Color(0xFFE5E7EB) // gray-200
 }
 
-private val SeatFreeText = TotemPalette.Ink
+// No site o número do assento é branco em todos os estados (!tw-text-white).
+private val SeatFreeText = TotemPalette.Paper
 private val SeatSelectedText = TotemPalette.Paper
 private val SeatUnavailableText = TotemPalette.Paper
 

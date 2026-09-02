@@ -1,9 +1,9 @@
 package com.example.passagenexpress.core.domain.model
 
 /**
- * Order do Mercado Pago Point Tap (API nova). O app cria via backend próprio
- * (`POST /api/payments`) e faz polling em `/api/payments/{id}/status` até receber
- * um status terminal. IDs têm formato `ORD…` e são tratados como string opaca.
+ * Order do Mercado Pago Point Tap. O app cria via backend próprio (`POST /api/point/store`)
+ * e faz polling em `/api/point/status/{id}` até o pedido ficar `Pago` ou `Negado`.
+ * IDs têm formato `ORD…` e são tratados como string opaca.
  */
 data class PointTapOrder(
     val id: String,
@@ -11,19 +11,17 @@ data class PointTapOrder(
 )
 
 /**
- * Status do pagamento na maquininha. `Open` é o estado inicial (order criada,
- * aguardando aproximação do cartão); `Processing` aparece quando o cartão foi
- * lido e o gateway processa; os demais são terminais.
+ * Status do pagamento, derivado do `status` do pedido no backend.
+ * `Pending` cobre os estados não-terminais (`Solicitado`/`Em venda`/`OPEN`) — o totem segue
+ * aguardando a aproximação do cartão; `Paid` e `Denied` são terminais.
  */
 enum class PointTapStatus {
-    Open,
-    Processing,
-    Finished,
-    Canceled,
-    Error;
+    Pending,
+    Paid,
+    Denied;
 
     val isTerminal: Boolean
-        get() = this == Finished || this == Canceled || this == Error
+        get() = this == Paid || this == Denied
 }
 
 /** Snapshot completo retornado pelo polling de status. */

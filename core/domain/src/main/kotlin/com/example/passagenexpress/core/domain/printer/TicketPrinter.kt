@@ -17,6 +17,13 @@ interface TicketPrinter {
 
     /** Imprime um ticket de teste curto (botão "Testar impressão" no setup). */
     suspend fun testPrint(): AppResult<Unit>
+
+    /**
+     * Ping de keep-alive: envia uma consulta de status (não move papel) para manter a impressora
+     * acordada/conectada quando o totem fica ocioso. Best-effort e silencioso — não retorna erro
+     * nem pede permissão; se não houver impressora pronta, simplesmente não faz nada.
+     */
+    suspend fun keepAlive()
 }
 
 data class UsbPrinterDevice(

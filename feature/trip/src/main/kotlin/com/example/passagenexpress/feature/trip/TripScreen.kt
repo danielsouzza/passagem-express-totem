@@ -65,11 +65,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.passagenexpress.core.designsystem.component.ProvideDialogLocale
 import com.example.passagenexpress.core.designsystem.component.TotemErrorState
 import com.example.passagenexpress.core.designsystem.component.TotemLoading
 import com.example.passagenexpress.core.designsystem.component.TotemPrimaryButton
@@ -98,17 +100,12 @@ fun TripScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     TripContent(
         state = state,
-        onSelectTrip = viewModel::onSelectTrip,
+        onTripClick = onTripConfirmed,
         onJumpToProxima = viewModel::onJumpToProximaViagem,
         onRetry = viewModel::onRetry,
-        onContinue = {
-            val selectedId = state.selectedTrechoId
-            val loaded = state.trips as? TripsState.Loaded
-            val trecho = loaded?.trechos?.firstOrNull { it.id == selectedId }
-            if (trecho != null) onTripConfirmed(trecho)
-        },
         onBack = onBack,
-        onOpenFilters = viewModel::onOpenFilters,
+        onOpenDateFilter = viewModel::onOpenDateFilter,
+        onOpenDestinoFilter = viewModel::onOpenDestinoFilter,
         onDismissFilters = viewModel::onDismissFilters,
         onSheetSelectDestino = viewModel::onSheetSelectDestino,
         onSheetSelectDate = viewModel::onSheetSelectDate,
@@ -121,12 +118,12 @@ fun TripScreen(
 @Composable
 private fun TripContent(
     state: TripUiState,
-    onSelectTrip: (Trecho) -> Unit,
+    onTripClick: (Trecho) -> Unit,
     onJumpToProxima: () -> Unit,
     onRetry: () -> Unit,
-    onContinue: () -> Unit,
     onBack: () -> Unit,
-    onOpenFilters: () -> Unit = {},
+    onOpenDateFilter: () -> Unit = {},
+    onOpenDestinoFilter: () -> Unit = {},
     onDismissFilters: () -> Unit = {},
     onSheetSelectDestino: (String, String) -> Unit = { _, _ -> },
     onSheetSelectDate: (LocalDate) -> Unit = {},
@@ -134,27 +131,36 @@ private fun TripContent(
     onSheetNextMonth: () -> Unit = {},
     onApplyFilters: () -> Unit = {},
 ) {
-    val subtitle = if (state.origemNome.isNotEmpty() && state.destinoNome.isNotEmpty()) {
-        stringResFmt(R.string.trip_subtitle_route, state.origemNome, state.destinoNome)
-    } else null
+    val subtitle = when {
+        state.origemNome.isNotEmpty() && state.destinoNome.isNotEmpty() ->
+            stringResFmt(R.string.trip_subtitle_route, state.origemNome, state.destinoNome)
+        state.origemNome.isNotEmpty() ->
+            stringResFmt(R.string.trip_subtitle_origin, state.origemNome)
+        else -> null
+    }
 
     TotemScreenScaffold(
-        step = 3,
+        step = 1,
+        totalSteps = 4,
+        // Cancelar só a partir do passo 2 (quando já há reserva/dados); no passo 1 basta Voltar/Início.
+        showCancel = false,
         title = stringRes(R.string.trip_title),
         subtitle = subtitle,
-        onFilterClick = onOpenFilters,
         footer = {
             TotemSecondaryButton(text = stringRes(R.string.trip_back), onClick = onBack)
-            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
-                TotemPrimaryButton(
-                    text = stringRes(R.string.trip_continue),
-                    onClick = onContinue,
-                    enabled = state.selectedTrechoId != null,
-                )
-            }
         },
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
+            FilterButtonsRow(
+                dateLabel = if (state.dataIrrestrita) {
+                    stringRes(R.string.trip_filter_upcoming)
+                } else {
+                    formatCardDate(state.date)
+                },
+                destinoLabel = state.destinoNome.ifEmpty { stringRes(R.string.trip_filter_all_destinations) },
+                onDateClick = onOpenDateFilter,
+                onDestinoClick = onOpenDestinoFilter,
+            )
             when (val trips = state.trips) {
                 TripsState.Loading -> TotemLoading(label = stringRes(R.string.trip_loading))
                 is TripsState.Error -> TotemErrorState(
@@ -179,13 +185,12 @@ private fun TripContent(
                         ) {
                             itemsIndexed(
                                 items = trips.trechos,
-                                key = { _, t -> t.id },
+                                key = { _, t -> t.rowKey() },
                             ) { index, trecho ->
                                 StaggeredItem(index = index) {
                                     TripCard(
                                         trecho = trecho,
-                                        selected = state.selectedTrechoId == trecho.id,
-                                        onClick = { onSelectTrip(trecho) },
+                                        onClick = { onTripClick(trecho) },
                                     )
                                 }
                             }
@@ -220,7 +225,14 @@ private fun FilterDialog(
     onNextMonth: () -> Unit,
     onApply: () -> Unit,
 ) {
+    val dialogTitle = when (sheet) {
+        is FilterSheetState.Open ->
+            if (sheet.mode == FilterMode.Date) stringRes(R.string.trip_filter_date_title)
+            else stringRes(R.string.trip_filter_destino_title)
+        else -> stringRes(R.string.trip_filter_destino_title)
+    }
     Dialog(onDismissRequest = onDismiss) {
+        ProvideDialogLocale {
         Surface(
             color = TotemPalette.Paper,
             shape = RoundedCornerShape(TotemTheme.dimens.radiusLg),
@@ -235,7 +247,7 @@ private fun FilterDialog(
                     horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
                     Text(
-                        text = stringRes(R.string.trip_filter_title),
+                        text = dialogTitle,
                         style = MaterialTheme.typography.headlineSmall.copy(
                             fontWeight = FontWeight.Bold,
                         ),
@@ -275,22 +287,21 @@ private fun FilterDialog(
                                 .verticalScroll(rememberScrollState()),
                             verticalArrangement = Arrangement.spacedBy(TotemTheme.dimens.space16),
                         ) {
-                            FilterSectionLabel(text = stringRes(R.string.trip_filter_destination))
-                            DestinationDropdown(
-                                destinations = sheet.destinations,
-                                selectedSlug = sheet.selectedDestinoSlug,
-                                selectedNome = sheet.selectedDestinoNome,
-                                onSelect = onSelectDestino,
-                            )
-                            FilterSectionLabel(text = stringRes(R.string.trip_filter_date))
-                            CalendarPicker(
-                                today = LocalDate.now(),
-                                selected = sheet.selectedDate,
-                                visibleMonth = sheet.visibleMonth,
-                                onSelect = onSelectDate,
-                                onPrevMonth = onPrevMonth,
-                                onNextMonth = onNextMonth,
-                            )
+                            when (sheet.mode) {
+                                FilterMode.Date -> CalendarPicker(
+                                    today = LocalDate.now(),
+                                    selected = sheet.selectedDate,
+                                    visibleMonth = sheet.visibleMonth,
+                                    onSelect = onSelectDate,
+                                    onPrevMonth = onPrevMonth,
+                                    onNextMonth = onNextMonth,
+                                )
+                                FilterMode.Destino -> DestinationList(
+                                    destinations = sheet.destinations,
+                                    selectedSlug = sheet.selectedDestinoSlug,
+                                    onSelect = onSelectDestino,
+                                )
+                            }
                             if (sheet.error != null) {
                                 Text(
                                     text = sheet.error,
@@ -313,147 +324,168 @@ private fun FilterDialog(
                                 text = stringRes(R.string.trip_filter_apply),
                                 onClick = onApply,
                                 modifier = Modifier.weight(1f),
-                                enabled = sheet.selectedDestinoSlug.isNotEmpty(),
                             )
                         }
                     }
                 }
             }
         }
+        }
     }
 }
 
 @Composable
-private fun FilterSectionLabel(text: String) {
-    Text(
-        text = text.uppercase(),
-        style = MaterialTheme.typography.labelMedium.copy(
-            fontWeight = FontWeight.Bold,
-            letterSpacing = 1.5.sp,
-        ),
-        color = TotemPalette.Accent,
-    )
-}
-
-@Composable
-private fun DestinationDropdown(
-    destinations: List<Municipio>,
-    selectedSlug: String,
-    selectedNome: String,
-    onSelect: (String, String) -> Unit,
+private fun FilterButtonsRow(
+    dateLabel: String,
+    destinoLabel: String,
+    onDateClick: () -> Unit,
+    onDestinoClick: () -> Unit,
 ) {
-    var expanded by remember { mutableStateOf(false) }
-    var anchorSize by remember { mutableStateOf(androidx.compose.ui.unit.IntSize.Zero) }
-    val density = LocalDensity.current
-    val label = selectedNome.ifEmpty {
-        destinations.firstOrNull { it.slug == selectedSlug }?.nome.orEmpty()
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = TotemTheme.dimens.space12),
+        horizontalArrangement = Arrangement.spacedBy(TotemTheme.dimens.space12),
+    ) {
+        FilterPillButton(
+            icon = Icons.Filled.CalendarMonth,
+            label = stringRes(R.string.trip_filter_date),
+            value = dateLabel,
+            onClick = onDateClick,
+            modifier = Modifier.weight(1f),
+        )
+        FilterPillButton(
+            icon = Icons.Filled.LocationOn,
+            label = stringRes(R.string.trip_filter_destination),
+            value = destinoLabel,
+            onClick = onDestinoClick,
+            modifier = Modifier.weight(1f),
+        )
     }
-    Box {
-        Surface(
-            shape = RoundedCornerShape(TotemTheme.dimens.radiusLg),
-            color = TotemPalette.Paper,
-            border = BorderStroke(
-                width = if (expanded) 2.dp else 1.5.dp,
-                color = if (expanded) TotemPalette.Accent else TotemPalette.Hairline,
+}
+
+@Composable
+private fun FilterPillButton(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    value: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        shape = RoundedCornerShape(TotemTheme.dimens.radiusLg),
+        color = TotemPalette.Paper,
+        border = BorderStroke(1.5.dp, TotemPalette.Hairline),
+        modifier = modifier
+            .clip(RoundedCornerShape(TotemTheme.dimens.radiusLg))
+            .clickable(onClick = onClick),
+    ) {
+        Row(
+            modifier = Modifier.padding(
+                horizontal = TotemTheme.dimens.space20,
+                vertical = TotemTheme.dimens.space16,
             ),
-            modifier = Modifier
-                .fillMaxWidth()
-                .onSizeChanged { anchorSize = it }
-                .clip(RoundedCornerShape(TotemTheme.dimens.radiusLg))
-                .clickable(enabled = destinations.isNotEmpty()) { expanded = !expanded },
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(TotemTheme.dimens.space12),
         ) {
-            Row(
-                modifier = Modifier.padding(
-                    horizontal = TotemTheme.dimens.space20,
-                    vertical = TotemTheme.dimens.space16,
-                ),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(TotemTheme.dimens.space12),
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.LocationOn,
-                    contentDescription = null,
-                    tint = TotemPalette.Accent,
-                    modifier = Modifier.size(22.dp),
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = TotemPalette.Accent,
+                modifier = Modifier.size(22.dp),
+            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = label.uppercase(),
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.2.sp,
+                    ),
+                    color = TotemPalette.InkMuted,
                 )
                 Text(
-                    text = label.ifEmpty {
-                        if (destinations.isEmpty()) stringRes(R.string.trip_filter_destinations_empty)
-                        else stringRes(R.string.trip_filter_destination)
-                    },
+                    text = value,
                     style = MaterialTheme.typography.titleMedium.copy(
                         fontWeight = FontWeight.SemiBold,
                     ),
-                    color = if (label.isEmpty()) TotemPalette.InkMuted else TotemPalette.Ink,
-                    modifier = Modifier.weight(1f),
-                )
-                Icon(
-                    imageVector = Icons.Filled.ArrowDropDown,
-                    contentDescription = null,
-                    tint = TotemPalette.InkMuted,
+                    color = TotemPalette.Ink,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
         }
-        if (expanded && destinations.isNotEmpty()) {
-            Popup(
-                alignment = Alignment.TopStart,
-                offset = IntOffset(0, anchorSize.height + with(density) { 4.dp.roundToPx() }),
-                onDismissRequest = { expanded = false },
-                properties = PopupProperties(focusable = true),
-            ) {
-                Surface(
-                    color = TotemPalette.Paper,
-                    shape = RoundedCornerShape(TotemTheme.dimens.radiusLg),
-                    border = BorderStroke(1.5.dp, TotemPalette.Hairline),
-                    shadowElevation = 8.dp,
-                    modifier = Modifier
-                        .width(with(density) { anchorSize.width.toDp() })
-                        .heightIn(max = 260.dp),
-                ) {
-                    Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-                        destinations.forEachIndexed { index, m ->
-                            val isSelected = m.slug == selectedSlug
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable {
-                                        onSelect(m.slug, m.nome)
-                                        expanded = false
-                                    }
-                                    .padding(
-                                        horizontal = TotemTheme.dimens.space20,
-                                        vertical = TotemTheme.dimens.space12,
-                                    ),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(TotemTheme.dimens.space12),
-                            ) {
-                                Text(
-                                    text = m.nome,
-                                    style = MaterialTheme.typography.titleMedium.copy(
-                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                    ),
-                                    color = if (isSelected) TotemPalette.Accent else TotemPalette.Ink,
-                                    modifier = Modifier.weight(1f),
-                                )
-                                if (isSelected) {
-                                    Icon(
-                                        imageVector = Icons.Filled.Check,
-                                        contentDescription = null,
-                                        tint = TotemPalette.Accent,
-                                        modifier = Modifier.size(20.dp),
-                                    )
-                                }
-                            }
-                            if (index != destinations.lastIndex) {
-                                HorizontalDivider(
-                                    color = TotemPalette.Hairline,
-                                    modifier = Modifier.padding(horizontal = TotemTheme.dimens.space20),
-                                )
-                            }
-                        }
-                    }
-                }
+    }
+}
+
+@Composable
+private fun DestinationList(
+    destinations: List<Municipio>,
+    selectedSlug: String,
+    onSelect: (String, String) -> Unit,
+) {
+    if (destinations.isEmpty()) {
+        Text(
+            text = stringRes(R.string.trip_filter_destinations_empty),
+            style = MaterialTheme.typography.titleMedium,
+            color = TotemPalette.InkMuted,
+            modifier = Modifier.padding(vertical = TotemTheme.dimens.space12),
+        )
+        return
+    }
+    Column(modifier = Modifier.fillMaxWidth()) {
+        DestinationRow(
+            nome = stringRes(R.string.trip_filter_all_destinations),
+            selected = selectedSlug.isEmpty(),
+            onClick = { onSelect("", "") },
+        )
+        HorizontalDivider(
+            color = TotemPalette.Hairline,
+            modifier = Modifier.padding(horizontal = TotemTheme.dimens.space20),
+        )
+        destinations.forEachIndexed { index, m ->
+            DestinationRow(
+                nome = m.nome,
+                selected = m.slug == selectedSlug,
+                onClick = { onSelect(m.slug, m.nome) },
+            )
+            if (index != destinations.lastIndex) {
+                HorizontalDivider(
+                    color = TotemPalette.Hairline,
+                    modifier = Modifier.padding(horizontal = TotemTheme.dimens.space20),
+                )
             }
+        }
+    }
+}
+
+@Composable
+private fun DestinationRow(nome: String, selected: Boolean, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(
+                horizontal = TotemTheme.dimens.space20,
+                vertical = TotemTheme.dimens.space16,
+            ),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(TotemTheme.dimens.space12),
+    ) {
+        Text(
+            text = nome,
+            style = MaterialTheme.typography.titleMedium.copy(
+                fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+            ),
+            color = if (selected) TotemPalette.Accent else TotemPalette.Ink,
+            modifier = Modifier.weight(1f),
+        )
+        if (selected) {
+            Icon(
+                imageVector = Icons.Filled.Check,
+                contentDescription = null,
+                tint = TotemPalette.Accent,
+                modifier = Modifier.size(20.dp),
+            )
         }
     }
 }
@@ -679,16 +711,20 @@ private fun CalendarDayCell(
     }
 }
 
+private const val MAX_STAGGER_INDEX = 8
+
 @Composable
 private fun StaggeredItem(index: Int, content: @Composable () -> Unit) {
     val visibility = remember(index) {
         MutableTransitionState(false).apply { targetState = true }
     }
+    // Capa o stagger nos primeiros itens pra lista não demorar a aparecer por inteiro.
+    val staggerDelay = index.coerceAtMost(MAX_STAGGER_INDEX) * 45
     AnimatedVisibility(
         visibleState = visibility,
-        enter = fadeIn(tween(260, delayMillis = index * 45)) +
+        enter = fadeIn(tween(260, delayMillis = staggerDelay)) +
             slideInVertically(
-                animationSpec = tween(320, delayMillis = index * 45),
+                animationSpec = tween(320, delayMillis = staggerDelay),
                 initialOffsetY = { it / 5 },
             ),
     ) {
@@ -699,14 +735,13 @@ private fun StaggeredItem(index: Int, content: @Composable () -> Unit) {
 @Composable
 private fun TripCard(
     trecho: Trecho,
-    selected: Boolean,
     onClick: () -> Unit,
 ) {
-    val borderColor = if (selected) TotemPalette.Ink else TotemPalette.Hairline
-    val borderWidth = if (selected) 2.dp else 1.5.dp
-    val nameColor = if (selected) TotemPalette.Accent else TotemPalette.Ink
-    val chipBg = if (selected) TotemPalette.Accent else TotemPalette.AccentTint
-    val chipFg = if (selected) TotemPalette.Paper else TotemPalette.Accent
+    val borderColor = TotemPalette.Hairline
+    val borderWidth = 1.5.dp
+    val nameColor = TotemPalette.Ink
+    val chipBg = TotemPalette.AccentTint
+    val chipFg = TotemPalette.Accent
     val type = vesselType(trecho.embarcacao)
     val priceWithDiscount = trecho.precoBaseComDesconto() + trecho.taxaDeEmbarque
     val priceOriginal = trecho.valor + trecho.taxaDeEmbarque
@@ -737,19 +772,30 @@ private fun TripCard(
                 verticalArrangement = Arrangement.spacedBy(2.dp),
             ) {
                 Text(
-                    text = trecho.embarcacao.ifEmpty { stringRes(R.string.trip_title) },
+                    text = "${trecho.municipioOrigem.nome} → ${trecho.municipioDestino.nome}",
                     style = MaterialTheme.typography.titleLarge.copy(
                         fontWeight = FontWeight.SemiBold,
                         letterSpacing = (-0.2).sp,
                     ),
                     color = nameColor,
                     maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
                 Text(
-                    text = type.label,
-                    style = MaterialTheme.typography.labelSmall.copy(
+                    text = trecho.embarcacao.ifEmpty { stringRes(R.string.trip_title) },
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        fontWeight = FontWeight.Medium,
+                    ),
+                    color = TotemPalette.Ink,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = formatCardDate(trecho.dataEmbarque),
+                    style = MaterialTheme.typography.labelLarge.copy(
                         fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.5.sp,
+                        fontSize = 15.sp,
+                        letterSpacing = 1.sp,
                     ),
                     color = TotemPalette.InkMuted,
                 )
@@ -963,14 +1009,11 @@ private fun EmptyWithProxima(
 private fun formatTime(time: LocalTime): String =
     time.format(DateTimeFormatter.ofPattern("HH:mm"))
 
+// Mesmo formato do web (formatarTempoViagem): "48H00", "02H30".
 private fun formatDuration(minutes: Int): String {
     val h = minutes / 60
     val m = minutes % 60
-    return when {
-        h > 0 && m > 0 -> "${h}h ${m}min"
-        h > 0 -> "${h}h"
-        else -> "${m}min"
-    }
+    return "%02dH%02d".format(h, m)
 }
 
 private fun formatMoney(value: Double): String {
@@ -981,6 +1024,10 @@ private fun formatMoney(value: Double): String {
 private fun formatProximaDate(date: LocalDate): String =
     date.format(DateTimeFormatter.ofPattern("EEEE, dd 'de' MMMM", Locale.forLanguageTag("pt-BR")))
         .replaceFirstChar { it.uppercase(Locale.forLanguageTag("pt-BR")) }
+
+private fun formatCardDate(date: LocalDate): String =
+    date.format(DateTimeFormatter.ofPattern("EEE, dd/MM", LocaleBR))
+        .replaceFirstChar { it.uppercase(LocaleBR) }
 
 @Composable
 private fun stringRes(id: Int): String = androidx.compose.ui.res.stringResource(id)
@@ -1016,12 +1063,10 @@ private fun TripScreenPreview() {
                 destinoNome = "Morro de São Paulo",
                 date = LocalDate.now(),
                 trips = TripsState.Loaded(listOf(sample, sample.copy(id = 2L, horario = LocalTime.of(11, 0)))),
-                selectedTrechoId = 1L,
             ),
-            onSelectTrip = {},
+            onTripClick = {},
             onJumpToProxima = {},
             onRetry = {},
-            onContinue = {},
             onBack = {},
         )
     }

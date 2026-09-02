@@ -7,6 +7,6 @@ import javax.inject.Inject
 class CancelarPointTapOrderUseCase @Inject constructor(
     private val repository: PointTapRepository,
 ) {
-    suspend operator fun invoke(orderId: String): AppResult<Unit> =
-        repository.cancelarOrder(orderId)
+    suspend operator fun invoke(pedidoId: Long): AppResult<Unit> =
+        repository.cancelarOrder(pedidoId)
 }

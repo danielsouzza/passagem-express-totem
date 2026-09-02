@@ -9,8 +9,13 @@ const val IDLE_ROUTE = "idle"
 fun NavGraphBuilder.idleScreen(
     onStart: () -> Unit,
     onSecretLongPress: () -> Unit,
+    onSettings: () -> Unit,
 ) {
     composable(IDLE_ROUTE) {
-        IdleScreen(onStart = onStart, onSecretLongPress = onSecretLongPress)
+        IdleScreen(
+            onStart = onStart,
+            onSecretLongPress = onSecretLongPress,
+            onSettings = onSettings,
+        )
     }
 }

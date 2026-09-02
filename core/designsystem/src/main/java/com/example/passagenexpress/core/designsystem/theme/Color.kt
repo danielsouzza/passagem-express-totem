@@ -32,6 +32,8 @@ object TotemPalette {
     val Error = Color(0xFFC24714)
     val ErrorLight = Color(0xFFF6DDD0)
     val Warning = Color(0xFFEF6C00)
+    val WarningLight = Color(0xFFFCEBD5)
+    val WarningDark = Color(0xFF8A3F00)
 
     val Neutral0 = Paper
     val Neutral50 = PaperWarm

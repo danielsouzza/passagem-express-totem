@@ -2,6 +2,7 @@
 <resources>
     <string name="trip_title">Escolha sua viagem</string>
     <string name="trip_subtitle_route">%1$s → %2$s</string>
+    <string name="trip_subtitle_origin">Saindo de %1$s</string>
     <string name="trip_loading">Buscando viagens…</string>
     <string name="trip_error_title">Falha ao buscar viagens</string>
     <string name="trip_empty_title">Sem viagens nesta data</string>
@@ -23,7 +24,11 @@
     <string name="trip_label_per_person">Por pessoa</string>
     <string name="trip_label_pix">No pix</string>
     <string name="trip_filter_title">Alterar filtros</string>
+    <string name="trip_filter_date_title">Filtrar por data</string>
+    <string name="trip_filter_destino_title">Filtrar por destino</string>
+    <string name="trip_filter_upcoming">Próximas</string>
     <string name="trip_filter_destination">Destino</string>
+    <string name="trip_filter_all_destinations">Todos os destinos</string>
     <string name="trip_filter_date">Data</string>
     <string name="trip_filter_loading">Carregando destinos…</string>
     <string name="trip_filter_apply">Aplicar</string>

@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -24,7 +25,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Language
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -33,9 +36,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -49,6 +54,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.passagenexpress.core.designsystem.theme.TotemPalette
 import com.example.passagenexpress.core.designsystem.theme.TotemTheme
 import com.example.passagenexpress.core.domain.model.AppLanguage
+import com.example.passagenexpress.feature.idle.R
 
 private val SECRET_CORNER_SIZE = 120.dp
 
@@ -56,6 +62,7 @@ private val SECRET_CORNER_SIZE = 120.dp
 fun IdleScreen(
     onStart: () -> Unit,
     onSecretLongPress: () -> Unit,
+    onSettings: () -> Unit,
     viewModel: IdleViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -63,6 +70,7 @@ fun IdleScreen(
         state = state,
         onStart = onStart,
         onSecretLongPress = onSecretLongPress,
+        onSettings = onSettings,
     )
 }
 
@@ -71,6 +79,7 @@ private fun IdleContent(
     state: IdleUiState,
     onStart: () -> Unit,
     onSecretLongPress: () -> Unit,
+    onSettings: () -> Unit,
 ) {
     val cornerPx = with(LocalDensity.current) { SECRET_CORNER_SIZE.toPx() }
     Surface(modifier = Modifier.fillMaxSize(), color = TotemPalette.Paper) {
@@ -91,27 +100,31 @@ private fun IdleContent(
         ) {
             IdleTopBar(
                 language = state.defaultLanguage,
+                onSettings = onSettings,
                 modifier = Modifier.align(Alignment.TopCenter),
             )
 
             Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .align(Alignment.Center)
+                    .fillMaxSize()
                     .padding(horizontal = TotemTheme.dimens.space48),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(TotemTheme.dimens.space24),
             ) {
+                // Marca ancorada no terço superior: espaço menor acima que abaixo.
+                Spacer(Modifier.weight(0.9f))
                 Wordmark()
-                Tagline(language = state.defaultLanguage)
-                Spacer(Modifier.height(TotemTheme.dimens.space16))
+                Spacer(Modifier.height(TotemTheme.dimens.space24))
+                Tagline()
+                // Vão menor: puxa o CTA pra perto do meio da tela.
+                Spacer(Modifier.weight(0.7f))
                 IdleArrow()
-                TapToStart(language = state.defaultLanguage)
+                Spacer(Modifier.height(TotemTheme.dimens.space24))
+                TapToStart()
+                Spacer(Modifier.weight(1.4f))
             }
 
             IdleFoot(
                 portoNome = state.portoNome,
-                language = state.defaultLanguage,
                 modifier = Modifier.align(Alignment.BottomCenter),
             )
         }
@@ -119,7 +132,11 @@ private fun IdleContent(
 }
 
 @Composable
-private fun IdleTopBar(language: AppLanguage, modifier: Modifier = Modifier) {
+private fun IdleTopBar(
+    language: AppLanguage,
+    onSettings: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -148,7 +165,19 @@ private fun IdleTopBar(language: AppLanguage, modifier: Modifier = Modifier) {
                 color = TotemPalette.Ink,
             )
         }
-        LanguagePill(language = language)
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(TotemTheme.dimens.space8),
+        ) {
+            LanguagePill(language = language)
+            IconButton(onClick = onSettings) {
+                Icon(
+                    imageVector = Icons.Filled.Settings,
+                    contentDescription = stringResource(R.string.idle_settings),
+                    tint = TotemPalette.InkMuted,
+                )
+            }
+        }
     }
 }
 
@@ -183,14 +212,14 @@ private fun LanguagePill(language: AppLanguage) {
 @Composable
 private fun Wordmark() {
     val text = buildAnnotatedString {
-        withStyle(SpanStyle(color = TotemPalette.Ink, fontSize = 100.sp)) { append("Passagem\n") }
+        withStyle(SpanStyle(color = TotemPalette.Ink, fontSize = 68.sp)) { append("Passagem\n") }
         withStyle(SpanStyle(color = TotemPalette.Accent)) { append("Express") }
     }
     Text(
         text = text,
         style = MaterialTheme.typography.displayLarge.copy(
-            fontSize = 200.sp,
-            lineHeight = 200.sp,
+            fontSize = 132.sp,
+            lineHeight = 132.sp,
             fontWeight = FontWeight.Black,
             letterSpacing = (-2).sp,
         ),
@@ -199,12 +228,9 @@ private fun Wordmark() {
 }
 
 @Composable
-private fun Tagline(language: AppLanguage) {
+private fun Tagline() {
     Text(
-        text = when (language) {
-            AppLanguage.PtBr -> "Compre seu bilhete e embarque em menos de um minuto."
-            AppLanguage.EnUs -> "Buy your ticket and board in under a minute."
-        },
+        text = stringResource(R.string.idle_tagline),
         style = MaterialTheme.typography.bodyLarge.copy(fontSize = 22.sp, lineHeight = 30.sp),
         color = TotemPalette.InkMuted,
         textAlign = TextAlign.Center,
@@ -215,34 +241,77 @@ private fun Tagline(language: AppLanguage) {
 @Composable
 private fun IdleArrow() {
     val transition = rememberInfiniteTransition(label = "idleArrow")
-    val offsetY by transition.animateFloat(
-        initialValue = 0f,
-        targetValue = 6f,
+    // Respiro do círculo principal.
+    val pulse by transition.animateFloat(
+        initialValue = 1f,
+        targetValue = 1.06f,
         animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 1100, easing = TotemTheme.motion.easeInOut),
+            animation = tween(durationMillis = 1400, easing = TotemTheme.motion.easeInOut),
             repeatMode = RepeatMode.Reverse,
         ),
-        label = "idleArrowOffset",
+        label = "idleArrowPulse",
+    )
+    // Anel "radar" que expande e some, chamando atenção.
+    val ringScale by transition.animateFloat(
+        initialValue = 1f,
+        targetValue = 1.8f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1800, easing = TotemTheme.motion.easeInOut),
+            repeatMode = RepeatMode.Restart,
+        ),
+        label = "idleArrowRingScale",
+    )
+    val ringAlpha by transition.animateFloat(
+        initialValue = 0.45f,
+        targetValue = 0f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1800, easing = TotemTheme.motion.easeInOut),
+            repeatMode = RepeatMode.Restart,
+        ),
+        label = "idleArrowRingAlpha",
+    )
+    // Seta cutucando para a direita, no sentido do avanço.
+    val nudge by transition.animateFloat(
+        initialValue = 0f,
+        targetValue = 5f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1400, easing = TotemTheme.motion.easeInOut),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "idleArrowNudge",
     )
     Box(
-        modifier = Modifier
-            .size(60.dp)
-            .border(2.dp, TotemPalette.Accent, CircleShape),
+        modifier = Modifier.size(128.dp),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(
-            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-            contentDescription = null,
-            tint = TotemPalette.Accent,
+        Box(
             modifier = Modifier
-                .size(26.dp)
-                .padding(top = offsetY.dp),
+                .size(88.dp)
+                .scale(ringScale)
+                .alpha(ringAlpha)
+                .border(2.dp, TotemPalette.Accent, CircleShape),
         )
+        Box(
+            modifier = Modifier
+                .size(88.dp)
+                .scale(pulse)
+                .border(3.dp, TotemPalette.Accent, CircleShape),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                contentDescription = null,
+                tint = TotemPalette.Accent,
+                modifier = Modifier
+                    .size(40.dp)
+                    .offset(x = nudge.dp),
+            )
+        }
     }
 }
 
 @Composable
-private fun TapToStart(language: AppLanguage) {
+private fun TapToStart() {
     val transition = rememberInfiniteTransition(label = "idleCtaPulse")
     val alpha by transition.animateFloat(
         initialValue = 0.4f,
@@ -253,16 +322,12 @@ private fun TapToStart(language: AppLanguage) {
         ),
         label = "idleCtaAlpha",
     )
-    val label = when (language) {
-        AppLanguage.PtBr -> "Toque para começar"
-        AppLanguage.EnUs -> "Tap to start"
-    }
     Text(
-        text = label.uppercase(),
+        text = stringResource(R.string.idle_tap_to_start).uppercase(),
         style = MaterialTheme.typography.labelLarge.copy(
             fontWeight = FontWeight.Bold,
-            letterSpacing = 2.sp,
-            fontSize = 18.sp,
+            letterSpacing = 2.5.sp,
+            fontSize = 22.sp,
         ),
         color = TotemPalette.Accent,
         modifier = Modifier.alpha(alpha),
@@ -270,12 +335,8 @@ private fun TapToStart(language: AppLanguage) {
 }
 
 @Composable
-private fun IdleFoot(portoNome: String, language: AppLanguage, modifier: Modifier = Modifier) {
-    val label = when {
-        portoNome.isNotEmpty() -> portoNome
-        language == AppLanguage.PtBr -> "Terminal Marítimo"
-        else -> "Maritime Terminal"
-    }
+private fun IdleFoot(portoNome: String, modifier: Modifier = Modifier) {
+    val label = portoNome.ifEmpty { stringResource(R.string.idle_terminal_fallback) }
     Text(
         text = label.uppercase(),
         fontSize = 18.sp,
@@ -300,6 +361,7 @@ private fun IdleScreenPreview() {
             state = IdleUiState(portoNome = "Porto de Salvador"),
             onStart = {},
             onSecretLongPress = {},
+            onSettings = {},
         )
     }
 }

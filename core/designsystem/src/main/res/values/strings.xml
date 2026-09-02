@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="totem_step_pill_label">ETAPA</string>
+    <string name="totem_step_pill_of">de</string>
+    <string name="totem_cancel">Cancelar</string>
+</resources>

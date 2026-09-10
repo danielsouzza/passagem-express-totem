@@ -1,9 +1,11 @@
 package com.example.passagenexpress.feature.room.navigation
 
 import com.example.passagenexpress.core.domain.model.Desconto
+import com.example.passagenexpress.core.domain.model.DescontoValorPorTipo
 import com.example.passagenexpress.core.domain.model.Municipio
 import com.example.passagenexpress.core.domain.model.TipoComodo
 import com.example.passagenexpress.core.domain.model.Trecho
+import com.example.passagenexpress.core.domain.model.ValorPorTipo
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import java.net.URLDecoder
@@ -34,6 +36,7 @@ internal data class TrechoNavPayload(
     val municipioOrigem: MunicipioPayload,
     val municipioDestino: MunicipioPayload,
     val desconto: DescontoPayload? = null,
+    val valores: List<ValorPorTipoPayload> = emptyList(),
 ) {
     fun toDomain(): Trecho = Trecho(
         id = id,
@@ -50,7 +53,15 @@ internal data class TrechoNavPayload(
         tiposComodos = tiposComodos.map { TipoComodo(it.id, it.nome) },
         municipioOrigem = municipioOrigem.toDomain(),
         municipioDestino = municipioDestino.toDomain(),
-        desconto = desconto?.let { Desconto(it.id, it.valor) },
+        desconto = desconto?.let {
+            Desconto(
+                id = it.id,
+                valor = it.valor,
+                valoresPorTipo = it.valoresPorTipo.map { v -> DescontoValorPorTipo(v.tipoComodidadeId, v.valorDesconto) },
+                tiposComodidadeIds = it.tiposComodidadeIds,
+            )
+        },
+        valores = valores.map { ValorPorTipo(it.tipoComodidadeId, it.valor) },
     )
 }
 
@@ -63,7 +74,18 @@ internal data class MunicipioPayload(val slug: String, val nome: String, val uf:
 }
 
 @Serializable
-internal data class DescontoPayload(val id: Long, val valor: Double)
+internal data class DescontoPayload(
+    val id: Long,
+    val valor: Double,
+    val valoresPorTipo: List<DescontoValorPorTipoPayload> = emptyList(),
+    val tiposComodidadeIds: List<Long> = emptyList(),
+)
+
+@Serializable
+internal data class DescontoValorPorTipoPayload(val tipoComodidadeId: Long, val valorDesconto: Double)
+
+@Serializable
+internal data class ValorPorTipoPayload(val tipoComodidadeId: Long, val valor: Double)
 
 internal fun Trecho.toNavPayload(): TrechoNavPayload = TrechoNavPayload(
     id = id,
@@ -80,7 +102,15 @@ internal fun Trecho.toNavPayload(): TrechoNavPayload = TrechoNavPayload(
     tiposComodos = tiposComodos.map { TipoComodoPayload(it.id, it.nome) },
     municipioOrigem = MunicipioPayload(municipioOrigem.slug, municipioOrigem.nome, municipioOrigem.uf),
     municipioDestino = MunicipioPayload(municipioDestino.slug, municipioDestino.nome, municipioDestino.uf),
-    desconto = desconto?.let { DescontoPayload(it.id, it.valor) },
+    desconto = desconto?.let {
+        DescontoPayload(
+            id = it.id,
+            valor = it.valor,
+            valoresPorTipo = it.valoresPorTipo.map { v -> DescontoValorPorTipoPayload(v.tipoComodidadeId, v.valorDesconto) },
+            tiposComodidadeIds = it.tiposComodidadeIds,
+        )
+    },
+    valores = valores.map { ValorPorTipoPayload(it.tipoComodidadeId, it.valor) },
 )
 
 internal val RoomNavJson: Json = Json { ignoreUnknownKeys = true }

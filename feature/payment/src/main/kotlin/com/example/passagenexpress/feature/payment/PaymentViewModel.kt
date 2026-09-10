@@ -18,7 +18,8 @@ import com.example.passagenexpress.core.domain.usecase.GerarPagamentoPixUseCase
 import com.example.passagenexpress.core.domain.usecase.ObterPointTapStatusUseCase
 import com.example.passagenexpress.core.domain.usecase.ObterStatusPedidoUseCase
 import com.example.passagenexpress.core.domain.model.TipoDocumento
-import com.example.passagenexpress.core.domain.model.precoBaseComDesconto
+import com.example.passagenexpress.core.domain.model.descontoCobreTipo
+import com.example.passagenexpress.core.domain.model.precoDoComodo
 import com.example.passagenexpress.feature.passenger.format.DocumentoMask
 import com.example.passagenexpress.feature.passenger.format.PhoneMask
 import com.example.passagenexpress.feature.payment.navigation.decodeSaleArg
@@ -445,7 +446,7 @@ class PaymentViewModel @Inject constructor(
         // não paga passagem); a taxa de embarque é por ocupante. Espelha `calculateTotal` do site.
         val totalPassagens = passageiros
             .distinctBy { it.comodo.id }
-            .sumOf { p -> trecho.precoBaseComDesconto(p.comodo.valor) }
+            .sumOf { p -> trecho.precoDoComodo(p.comodo.valor, p.comodo.tipoComodidadeId) }
         val totalTaxas = passageiros.size * taxa
         // Totem coleta menos campos que a web: não há mais o bloco "Dados para Contato" nem o
         // checkbox `isContact` — o passageiro #1 vira o contato por convenção.
@@ -497,9 +498,6 @@ class PaymentViewModel @Inject constructor(
             telefone = PhoneMask.digitsOnly(contatoSnapshot.telefoneDisplay)
                 .ifBlank { base.telefone },
         )
-        // Web monta `desconto_id: trecho.desconto?.id ?? null` em cada item de `dataComodos`
-        // (home.vue#populateComodos:431). Se o trecho não tem desconto, manda null.
-        val descontoId = trecho.desconto?.id
         // Ocupantes efetivos por camarote = nº de passageiros que compartilham o mesmo `comodo.id`.
         val ocupantesPorComodo = passageiros.groupingBy { it.comodo.id }.eachCount()
         val comodosVistos = mutableSetOf<Long>()
@@ -507,11 +505,14 @@ class PaymentViewModel @Inject constructor(
             val domain = p.toPassageiroDomain()
             // Primeiro passageiro de cada camarote = pivô; os demais são filhos ligados a ele.
             val isPivo = comodosVistos.add(p.comodo.id)
+            // `desconto_id` só quando o desconto do trecho cobre o tipo deste cômodo — senão o
+            // backend aplicaria o desconto onde não deve (guia valor-por-tipo do site, seç. 4.4).
+            val descontoId = if (trecho.descontoCobreTipo(p.comodo.tipoComodidadeId)) trecho.desconto?.id else null
             ItemPedido(
                 comodoId = p.comodo.id,
                 tipoComodidadeId = p.comodo.tipoComodidadeId,
                 passageiro = domain,
-                valor = trecho.precoBaseComDesconto(p.comodo.valor),
+                valor = trecho.precoDoComodo(p.comodo.valor, p.comodo.tipoComodidadeId),
                 taxaEmbarque = trecho.taxaDeEmbarque,
                 descontoId = descontoId,
                 isContact = index == 0,

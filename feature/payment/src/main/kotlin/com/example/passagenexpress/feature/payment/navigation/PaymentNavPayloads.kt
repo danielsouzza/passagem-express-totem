@@ -1,10 +1,12 @@
 package com.example.passagenexpress.feature.payment.navigation
 
 import com.example.passagenexpress.core.domain.model.Desconto
+import com.example.passagenexpress.core.domain.model.DescontoValorPorTipo
 import com.example.passagenexpress.core.domain.model.Municipio
 import com.example.passagenexpress.core.domain.model.TipoComodo
 import com.example.passagenexpress.core.domain.model.Trecho
 import com.example.passagenexpress.core.domain.model.TipoDocumento
+import com.example.passagenexpress.core.domain.model.ValorPorTipo
 import com.example.passagenexpress.feature.passenger.ContatoForm
 import com.example.passagenexpress.feature.passenger.PassageiroForm
 import com.example.passagenexpress.feature.passenger.format.BirthdateMask
@@ -47,6 +49,7 @@ internal data class PaymentTrechoPayload(
     val municipioOrigem: MunicipioPayload,
     val municipioDestino: MunicipioPayload,
     val desconto: DescontoPayload? = null,
+    val valores: List<ValorPorTipoPayload> = emptyList(),
 ) {
     fun toDomain(): Trecho = Trecho(
         id = id,
@@ -63,7 +66,15 @@ internal data class PaymentTrechoPayload(
         tiposComodos = tiposComodos.map { TipoComodo(it.id, it.nome) },
         municipioOrigem = municipioOrigem.toDomain(),
         municipioDestino = municipioDestino.toDomain(),
-        desconto = desconto?.let { Desconto(it.id, it.valor) },
+        desconto = desconto?.let {
+            Desconto(
+                id = it.id,
+                valor = it.valor,
+                valoresPorTipo = it.valoresPorTipo.map { v -> DescontoValorPorTipo(v.tipoComodidadeId, v.valorDesconto) },
+                tiposComodidadeIds = it.tiposComodidadeIds,
+            )
+        },
+        valores = valores.map { ValorPorTipo(it.tipoComodidadeId, it.valor) },
     )
 }
 
@@ -76,7 +87,18 @@ internal data class MunicipioPayload(val slug: String, val nome: String, val uf:
 }
 
 @Serializable
-internal data class DescontoPayload(val id: Long, val valor: Double)
+internal data class DescontoPayload(
+    val id: Long,
+    val valor: Double,
+    val valoresPorTipo: List<DescontoValorPorTipoPayload> = emptyList(),
+    val tiposComodidadeIds: List<Long> = emptyList(),
+)
+
+@Serializable
+internal data class DescontoValorPorTipoPayload(val tipoComodidadeId: Long, val valorDesconto: Double)
+
+@Serializable
+internal data class ValorPorTipoPayload(val tipoComodidadeId: Long, val valor: Double)
 
 /**
  * Snapshot mínimo do PassageiroForm que sobrevive à serialização — pula `errors`,
@@ -97,6 +119,7 @@ internal data class PaymentComodoPayload(
     val id: Long,
     val numeracao: Int? = null,
     val nome: String? = null,
+    val nomeComodo: String? = null,
     val tipoComodidadeId: Long,
     val valor: Double? = null,
     val quantidade: Int = 1,
@@ -105,6 +128,7 @@ internal data class PaymentComodoPayload(
         id = id,
         numeracao = numeracao,
         nome = nome,
+        nomeComodo = nomeComodo,
         linha = null,
         coluna = null,
         isOcupado = false,
@@ -139,6 +163,7 @@ internal fun List<PassageiroForm>.toPaymentSnapshot(): List<PaymentPassageiroPay
                 id = form.comodo.id,
                 numeracao = form.comodo.numeracao,
                 nome = form.comodo.nome,
+                nomeComodo = form.comodo.nomeComodo,
                 tipoComodidadeId = form.comodo.tipoComodidadeId,
                 valor = form.comodo.valor,
                 quantidade = form.comodo.quantidade,

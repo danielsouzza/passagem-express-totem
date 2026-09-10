@@ -183,7 +183,6 @@ class RoomViewModel @Inject constructor(
                 else -> Mode.Livres
             }
 
-            val tiposLivresPoltronas = bucketsForOutros(trecho.tiposComodos, livres)
             val tiposLivresCamarotes = bucketsForOutros(trecho.tiposComodos, livres)
             val tiposLivresAll = bucketsForLivres(trecho, livres)
 
@@ -191,10 +190,24 @@ class RoomViewModel @Inject constructor(
                 Mode.Poltronas -> {
                     val res = listarPoltronas(trecho.id, trecho.idViagem)
                     when (res) {
-                        is AppResult.Success -> RoomContentState.Poltronas(
-                            assentos = res.value[POLTRONA_TIPO_ID].orEmpty(),
-                            tiposLivres = tiposLivresPoltronas,
-                        )
+                        is AppResult.Success -> {
+                            // O backend pode devolver mais de um tipo posicionado na mesma
+                            // grade (ex.: {"1": [...], "5": [...]}) — mescla todos, exceto
+                            // camarote (id 4, sempre tratado à parte via tiposLivres/RoomCards).
+                            // Espelha `allRooms()` do site (CardTicketBarco.vue), que corrigiu
+                            // a mesma perda de assentos de um 2º tipo na grade.
+                            val tiposPosicionados = res.value.keys
+                            RoomContentState.Poltronas(
+                                assentos = res.value.filterKeys { it != CAMAROTE_TIPO_ID }.values.flatten(),
+                                // Um tipo já representado como assento posicionado na grade acima
+                                // não pode também aparecer como contador avulso — senão o mesmo
+                                // cômodo fica ofertado duas vezes (assento numerado + "Outros x N").
+                                tiposLivres = bucketsForOutros(
+                                    trecho.tiposComodos.filterNot { it.id in tiposPosicionados },
+                                    livres,
+                                ),
+                            )
+                        }
                         is AppResult.Failure -> RoomContentState.Error(
                             res.error.message ?: "Erro ao carregar poltronas",
                         )

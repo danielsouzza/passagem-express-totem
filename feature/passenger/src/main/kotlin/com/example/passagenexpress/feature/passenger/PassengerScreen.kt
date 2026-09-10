@@ -499,7 +499,8 @@ private fun FormFields(
 }
 
 private fun comodoLabel(comodo: com.example.passagenexpress.core.domain.model.Comodo): String =
-    comodo.nome?.takeIf { it.isNotBlank() }
+    comodo.nomeComodo?.takeIf { it.isNotBlank() }
+        ?: comodo.nome?.takeIf { it.isNotBlank() }
         ?: comodo.numeracao?.let { "Assento $it" }
         ?: "Cômodo"
 

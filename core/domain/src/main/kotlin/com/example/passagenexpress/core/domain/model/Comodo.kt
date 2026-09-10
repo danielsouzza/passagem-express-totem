@@ -5,6 +5,8 @@ data class Comodo(
     val id: Long,
     val numeracao: Int?,
     val nome: String?,
+    /** Nome de exibição do cômodo (ex.: "P 1", "BANCO") — preferir sobre `nome`/`numeracao`. */
+    val nomeComodo: String? = null,
     val linha: Int?,
     val coluna: Int?,
     val isOcupado: Boolean,

@@ -18,6 +18,7 @@ data class ComodoDto(
     val id: Long,
     val numeracao: Int? = null,
     val nome: String? = null,
+    @SerialName("nome_comodo") val nomeComodo: String? = null,
     val linha: Int? = null,
     val coluna: Int? = null,
     @SerialName("is_ocupado")
@@ -61,6 +62,7 @@ fun ComodoDto.toDomain(): Comodo = Comodo(
     id = id,
     numeracao = numeracao,
     nome = nome,
+    nomeComodo = nomeComodo,
     linha = linha,
     coluna = coluna,
     isOcupado = isOcupado,

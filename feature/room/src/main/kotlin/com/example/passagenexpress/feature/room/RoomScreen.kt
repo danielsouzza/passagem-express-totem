@@ -66,7 +66,7 @@ import com.example.passagenexpress.core.designsystem.theme.TotemPalette
 import com.example.passagenexpress.core.designsystem.theme.TotemTheme
 import com.example.passagenexpress.core.domain.model.Comodo
 import com.example.passagenexpress.core.domain.model.Trecho
-import com.example.passagenexpress.core.domain.model.precoBaseComDesconto
+import com.example.passagenexpress.core.domain.model.precoDoComodo
 import com.example.passagenexpress.core.domain.repository.InicioVenda
 import java.time.LocalDate
 import java.time.LocalTime
@@ -352,7 +352,9 @@ private fun SeatChip(
         selected -> SeatSelectedText
         else -> SeatFreeText
     }
-    val label = comodo?.numeracao?.let { String.format(Locale.US, "%02d", it) }.orEmpty()
+    val label = comodo?.let {
+        it.nomeComodo ?: it.nome ?: it.numeracao?.let { n -> String.format(Locale.US, "%02d", n) }
+    }.orEmpty()
     Surface(
         shape = RoundedCornerShape(8.dp),
         color = bg,
@@ -429,9 +431,9 @@ private fun RoomGrid(
                 is RoomGridItem.Individual -> {
                     val c = item.comodo
                     RoomCard(
-                        name = (c.nome ?: c.numeracao?.toString().orEmpty()).uppercase(),
+                        name = (c.nomeComodo ?: c.nome ?: c.numeracao?.toString().orEmpty()).uppercase(),
                         capacity = c.quantidade,
-                        price = formatMoney(trecho.precoBaseComDesconto(c.valor) + trecho.taxaDeEmbarque),
+                        price = formatMoney(trecho.precoDoComodo(c.valor, c.tipoComodidadeId) + trecho.taxaDeEmbarque),
                         disabled = c.isOcupado,
                         selected = c.id in selectedIds,
                         onClick = { onSelectComodo(c) },
@@ -443,7 +445,7 @@ private fun RoomGrid(
                     RoomCard(
                         name = bucket.tipo.nome.uppercase(),
                         capacity = bucket.livre.quantidade,
-                        price = formatMoney(trecho.precoBaseComDesconto() + trecho.taxaDeEmbarque),
+                        price = formatMoney(trecho.precoDoComodo(null, bucket.tipo.id) + trecho.taxaDeEmbarque),
                         disabled = bucket.livre.quantidade == 0,
                         selected = qty > 0,
                         quantity = qty,
@@ -671,8 +673,9 @@ private fun SelectedSection(
         } else {
             state.selecionados.porId.forEach { comodo ->
                 SelectedComodoRow(
-                    label = comodo.nome ?: comodo.numeracao?.let { String.format(Locale.US, "%02d", it) }.orEmpty(),
-                    valor = formatMoney(trecho.precoBaseComDesconto(comodo.valor) + trecho.taxaDeEmbarque),
+                    label = comodo.nomeComodo ?: comodo.nome
+                        ?: comodo.numeracao?.let { String.format(Locale.US, "%02d", it) }.orEmpty(),
+                    valor = formatMoney(trecho.precoDoComodo(comodo.valor, comodo.tipoComodidadeId) + trecho.taxaDeEmbarque),
                     onRemove = { onSelectComodo(comodo) },
                 )
             }
@@ -681,7 +684,7 @@ private fun SelectedSection(
                 SelectedTipoRow(
                     nome = tipo.nome,
                     quantidade = qtd,
-                    valorUnit = trecho.precoBaseComDesconto() + trecho.taxaDeEmbarque,
+                    valorUnit = trecho.precoDoComodo(null, tipoId) + trecho.taxaDeEmbarque,
                     onIncrement = { onIncrement(tipoId) },
                     onDecrement = { onDecrement(tipoId) },
                     onRemove = { onRemoveTipo(tipoId) },

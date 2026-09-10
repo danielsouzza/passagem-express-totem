@@ -82,7 +82,7 @@ import com.example.passagenexpress.core.designsystem.theme.TotemTheme
 import com.example.passagenexpress.core.domain.model.Municipio
 import com.example.passagenexpress.core.domain.model.TipoComodo
 import com.example.passagenexpress.core.domain.model.Trecho
-import com.example.passagenexpress.core.domain.model.precoBaseComDesconto
+import com.example.passagenexpress.core.domain.model.valorVitrine
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalTime
@@ -743,9 +743,12 @@ private fun TripCard(
     val chipBg = TotemPalette.AccentTint
     val chipFg = TotemPalette.Accent
     val type = vesselType(trecho.embarcacao)
-    val priceWithDiscount = trecho.precoBaseComDesconto() + trecho.taxaDeEmbarque
-    val priceOriginal = trecho.valor + trecho.taxaDeEmbarque
-    val hasDiscount = trecho.desconto != null && trecho.desconto!!.valor > 0
+    // Vitrine: escolhe UM tipo de cômodo representativo (prioridade Rede/Poltrona > Camarote/Suíte),
+    // preferindo o que tiver desconto — não é o preço do trecho cru nem um mínimo entre tipos.
+    val vitrine = trecho.valorVitrine()
+    val priceWithDiscount = (vitrine.base - vitrine.desconto).coerceAtLeast(0.0) + trecho.taxaDeEmbarque
+    val priceOriginal = vitrine.base + trecho.taxaDeEmbarque
+    val hasDiscount = vitrine.desconto > 0.0
 
     Surface(
         modifier = Modifier

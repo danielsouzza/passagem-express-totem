@@ -379,7 +379,7 @@ private fun SettingsEditor(
     val (onSave, canSave) = when (field) {
         SettingsField.Subdomain -> onSaveSubdomain to true
         SettingsField.Porto -> onSavePorto to state.canSavePorto
-        SettingsField.Embarcacao -> onSaveEmbarcacao to true
+        SettingsField.Embarcacao -> onSaveEmbarcacao to state.canSaveEmbarcacao
         SettingsField.Printer -> onSavePrinter to state.canSavePrinter
         SettingsField.Language -> onSaveLanguage to true
         SettingsField.Pin -> onSavePin to state.canSavePin

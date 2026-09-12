@@ -42,11 +42,16 @@ class TotemConfigDataStore @Inject constructor(
             operatorPin = prefs[Keys.OperatorPin].orEmpty(),
             embarcacaoId = prefs[Keys.EmbarcacaoId],
             embarcacaoNome = prefs[Keys.EmbarcacaoNome].orEmpty(),
+            isSuper = prefs[Keys.IsSuper] ?: false,
         )
     }
 
     override suspend fun setSubdomain(subdomain: String) {
         dataStore.edit { it[Keys.Subdomain] = subdomain }
+    }
+
+    override suspend fun setSuper(isSuper: Boolean) {
+        dataStore.edit { it[Keys.IsSuper] = isSuper }
     }
 
     override suspend fun setPorto(porto: Porto) {
@@ -123,5 +128,6 @@ class TotemConfigDataStore @Inject constructor(
         val OperatorPin = stringPreferencesKey("totem_operator_pin")
         val EmbarcacaoId = longPreferencesKey("totem_embarcacao_id")
         val EmbarcacaoNome = stringPreferencesKey("totem_embarcacao_nome")
+        val IsSuper = booleanPreferencesKey("totem_is_super")
     }
 }

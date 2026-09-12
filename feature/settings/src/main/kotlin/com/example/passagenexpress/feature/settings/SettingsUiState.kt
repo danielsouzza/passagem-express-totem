@@ -52,7 +52,15 @@ data class SettingsUiState(
     /** Campo cujo teclado on-screen está aberto (totem não usa IME nativo). */
     val keypadField: SettingsKeypadField? = null,
 ) {
-    val canSavePorto: Boolean get() = selectedPorto != null || portoCleared
+    /**
+     * Desvincular o porto ("Nenhum") só é permitido se já houver embarcação vinculada — senão o
+     * totem fica sem porto E sem embarcação, o que derruba `setupComplete` e manda o app de volta
+     * pro wizard inteiro (ver `TotemRootViewModel.rootDestination`).
+     */
+    val canSavePorto: Boolean get() = selectedPorto != null || (portoCleared && currentEmbarcacaoId != null)
+
+    /** Espelha [canSavePorto]: desvincular a embarcação só é permitido se já houver porto. */
+    val canSaveEmbarcacao: Boolean get() = selectedEmbarcacao != null || currentPortoNome.isNotEmpty()
     val canSavePrinter: Boolean get() = selectedPrinter != null
     val canSavePin: Boolean get() = pinDraft.length >= TotemConfig.MinPinLength
 

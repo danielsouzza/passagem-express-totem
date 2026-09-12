@@ -9,6 +9,8 @@ import kotlinx.coroutines.flow.Flow
 interface TotemConfigRepository {
     val config: Flow<TotemConfig>
     suspend fun setSubdomain(subdomain: String)
+    /** `is_super` de `api/empresa/tema` — controla o param `venda_super` nas requisições. */
+    suspend fun setSuper(isSuper: Boolean)
     suspend fun setPorto(porto: Porto)
     /** Limpa o porto vinculado (totem sem porto fixo — filtra viagens só pela embarcação). */
     suspend fun clearPorto()

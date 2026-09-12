@@ -19,6 +19,8 @@ data class TotemConfig(
     /** Embarcação onde o totem está a bordo; null = não vinculado (não filtra viagens). */
     val embarcacaoId: Long? = null,
     val embarcacaoNome: String = "",
+    /** `is_super` de `api/empresa/tema` — empresa/agência "super" usa meios de pagamento próprios. */
+    val isSuper: Boolean = false,
 ) {
     companion object {
         /** Número mínimo de dígitos do PIN de acesso às configurações. */
@@ -39,6 +41,7 @@ data class TotemConfig(
             operatorPin = "",
             embarcacaoId = null,
             embarcacaoNome = "",
+            isSuper = false,
         )
     }
 }

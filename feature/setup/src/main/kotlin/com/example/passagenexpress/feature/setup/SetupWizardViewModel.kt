@@ -13,6 +13,7 @@ import com.example.passagenexpress.core.domain.usecase.BuscarEmbarcacoesUseCase
 import com.example.passagenexpress.core.domain.usecase.BuscarPortosUseCase
 import com.example.passagenexpress.core.domain.usecase.CompletarSetupUseCase
 import com.example.passagenexpress.core.domain.usecase.ListarImpressorasUseCase
+import com.example.passagenexpress.core.domain.usecase.SincronizarTemaUseCase
 import com.example.passagenexpress.core.domain.usecase.TestarImpressaoUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -30,6 +31,7 @@ class SetupWizardViewModel @Inject constructor(
     private val completarSetup: CompletarSetupUseCase,
     private val listarImpressoras: ListarImpressorasUseCase,
     private val testarImpressao: TestarImpressaoUseCase,
+    private val sincronizarTema: SincronizarTemaUseCase,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SetupWizardUiState())
@@ -92,6 +94,7 @@ class SetupWizardViewModel @Inject constructor(
         if (!state.canAdvanceFromSubdomain) return
         viewModelScope.launch {
             totemConfigRepository.setSubdomain(state.subdomainInput.trim())
+            sincronizarTema()
             _uiState.update {
                 it.copy(step = SetupStep.Porto, portos = PortosState.Loading, keypadField = null)
             }

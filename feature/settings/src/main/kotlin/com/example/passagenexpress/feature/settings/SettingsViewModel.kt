@@ -12,6 +12,7 @@ import com.example.passagenexpress.core.domain.repository.TotemConfigRepository
 import com.example.passagenexpress.core.domain.usecase.BuscarEmbarcacoesUseCase
 import com.example.passagenexpress.core.domain.usecase.BuscarPortosUseCase
 import com.example.passagenexpress.core.domain.usecase.ListarImpressorasUseCase
+import com.example.passagenexpress.core.domain.usecase.SincronizarTemaUseCase
 import com.example.passagenexpress.core.domain.usecase.TestarImpressaoUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -28,6 +29,7 @@ class SettingsViewModel @Inject constructor(
     private val buscarEmbarcacoes: BuscarEmbarcacoesUseCase,
     private val listarImpressoras: ListarImpressorasUseCase,
     private val testarImpressao: TestarImpressaoUseCase,
+    private val sincronizarTema: SincronizarTemaUseCase,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SettingsUiState())
@@ -154,7 +156,9 @@ class SettingsViewModel @Inject constructor(
     }
 
     fun onSaveEmbarcacao() {
-        val selected = _uiState.value.selectedEmbarcacao
+        val state = _uiState.value
+        if (!state.canSaveEmbarcacao) return
+        val selected = state.selectedEmbarcacao
         viewModelScope.launch {
             totemConfigRepository.setEmbarcacao(selected?.id, selected?.nome.orEmpty())
             _uiState.update { it.copy(editing = null, keypadField = null, savedNotice = SettingsField.Embarcacao) }
@@ -336,14 +340,15 @@ class SettingsViewModel @Inject constructor(
         val value = _uiState.value.subdomainInput.trim()
         viewModelScope.launch {
             totemConfigRepository.setSubdomain(value)
+            sincronizarTema()
             _uiState.update { it.copy(editing = null, keypadField = null, savedNotice = SettingsField.Subdomain) }
         }
     }
 
     fun onSavePorto() {
         val state = _uiState.value
+        if (!state.canSavePorto) return
         val porto = state.selectedPorto
-        if (porto == null && !state.portoCleared) return
         viewModelScope.launch {
             if (porto != null) totemConfigRepository.setPorto(porto) else totemConfigRepository.clearPorto()
             _uiState.update { it.copy(editing = null, keypadField = null, savedNotice = SettingsField.Porto) }

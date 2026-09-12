@@ -1,6 +1,7 @@
 package com.example.passagenexpress.core.data.di
 
 import com.example.passagenexpress.core.data.remote.api.ComodoApi
+import com.example.passagenexpress.core.data.remote.api.EmpresaApi
 import com.example.passagenexpress.core.data.remote.api.PagamentoApi
 import com.example.passagenexpress.core.data.remote.api.PedidoApi
 import com.example.passagenexpress.core.data.remote.api.PointTapApi
@@ -35,4 +36,8 @@ object ApiModule {
     @Provides
     @Singleton
     fun providePointTapApi(retrofit: Retrofit): PointTapApi = retrofit.create(PointTapApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideEmpresaApi(retrofit: Retrofit): EmpresaApi = retrofit.create(EmpresaApi::class.java)
 }

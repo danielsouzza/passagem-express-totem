@@ -1,6 +1,7 @@
 package com.example.passagenexpress.core.network.di
 
 import com.example.passagenexpress.core.network.BuildConfig
+import com.example.passagenexpress.core.network.dns.LocalDevDns
 import com.example.passagenexpress.core.network.interceptor.AuthInterceptor
 import com.example.passagenexpress.core.network.json.NetworkJson
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
@@ -46,6 +47,10 @@ object NetworkModule {
             builder.addInterceptor(
                 HttpLoggingInterceptor().apply { level = HttpLoggingInterceptor.Level.BODY }
             )
+            // Dev local via Traefik: `techrios.localhost` resolve pra loopback no PC, mas não no
+            // emulador. `10.0.2.2` é o alias fixo do AVD pro `127.0.0.1` do host. Só ativo em
+            // debug — nunca deve ir pra release.
+            builder.dns(LocalDevDns(mapOf("techrios.localhost" to "10.0.2.2")))
         }
         return builder.build()
     }

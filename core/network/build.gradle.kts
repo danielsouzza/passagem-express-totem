@@ -22,6 +22,7 @@ android {
         buildConfigField(
             "String",
             "API_BASE_URL",
+//            "\"http://techrios.localhost/\""
 //            "\"http://172.30.237.224/\""
             "\"https://app.homologacao.techrios.online/\""
         )

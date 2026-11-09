@@ -2,6 +2,9 @@ package com.example.passagenexpress.feature.setup
 
 import com.example.passagenexpress.core.domain.model.AppLanguage
 import com.example.passagenexpress.core.domain.model.Embarcacao
+import com.example.passagenexpress.core.domain.model.Modalidade
+import com.example.passagenexpress.core.domain.model.onibus.LocalOnibus
+import com.example.passagenexpress.core.domain.model.onibus.Terminal
 import com.example.passagenexpress.core.domain.model.PaperWidth
 import com.example.passagenexpress.core.domain.model.Porto
 import com.example.passagenexpress.core.domain.model.TotemConfig
@@ -10,6 +13,12 @@ import com.example.passagenexpress.core.domain.printer.UsbPrinterDevice
 data class SetupWizardUiState(
     val step: SetupStep = SetupStep.Subdomain,
     val subdomainInput: String = "",
+    /** Modalidades vendidas pelo totem; define quais passos o wizard mostra. */
+    val modalidades: Set<Modalidade> = setOf(Modalidade.Hidroviario),
+    // Passo Terminal (rodoviário): busca por texto (≥3 letras) na API de terminais.
+    val terminalQuery: String = "",
+    val terminais: TerminaisState = TerminaisState.Idle,
+    val selectedTerminal: LocalOnibus? = null,
     val portos: PortosState = PortosState.Idle,
     val portoSearchQuery: String = "",
     val selectedPorto: Porto? = null,
@@ -45,9 +54,38 @@ data class SetupWizardUiState(
      */
     val hasPortoOrEmbarcacao: Boolean get() = selectedPorto != null || selectedEmbarcacao != null
 
-    /** PIN é obrigatório e precisa do mínimo de dígitos; além disso exige porto ou embarcação. */
+    val vendeHidroviario: Boolean get() = Modalidade.Hidroviario in modalidades
+    val vendeRodoviario: Boolean get() = Modalidade.Rodoviario in modalidades
+
+    val canAdvanceFromModalidade: Boolean get() = modalidades.isNotEmpty()
+
+    /** Rodoviário precisa do terminal de origem — é a origem fixa de toda busca de ônibus. */
+    val canAdvanceFromTerminal: Boolean get() = selectedTerminal != null
+
+    /** Passos do wizard conforme as modalidades escolhidas (Porto/Embarcação só pra barco, Terminal só pra ônibus). */
+    val steps: List<SetupStep>
+        get() = buildList {
+            add(SetupStep.Subdomain)
+            add(SetupStep.Modalidade)
+            if (vendeHidroviario) {
+                add(SetupStep.Porto)
+                add(SetupStep.Embarcacao)
+            }
+            if (vendeRodoviario) add(SetupStep.Terminal)
+            add(SetupStep.Printer)
+            add(SetupStep.Language)
+            add(SetupStep.Pin)
+        }
+
+    /**
+     * PIN é obrigatório e precisa do mínimo de dígitos; além disso cada modalidade ativa precisa
+     * da sua origem: barco → porto ou embarcação; ônibus → terminal.
+     */
     val canFinish: Boolean
-        get() = pinInput.length >= TotemConfig.MinPinLength && hasPortoOrEmbarcacao
+        get() = pinInput.length >= TotemConfig.MinPinLength &&
+            modalidades.isNotEmpty() &&
+            (!vendeHidroviario || hasPortoOrEmbarcacao) &&
+            (!vendeRodoviario || selectedTerminal != null)
 
     /** Lista filtrada de portos (case-insensitive em nome + município). */
     val filteredPortos: List<Porto>
@@ -72,10 +110,18 @@ data class SetupWizardUiState(
         } ?: emptyList()
 }
 
-enum class SetupStep { Subdomain, Porto, Embarcacao, Printer, Language, Pin }
+enum class SetupStep { Subdomain, Modalidade, Porto, Embarcacao, Terminal, Printer, Language, Pin }
 
 /** Campos de texto do wizard que recebem entrada pelo teclado on-screen do totem. */
-enum class SetupKeypadField { Subdomain, PortoSearch, EmbarcacaoSearch, Pin }
+enum class SetupKeypadField { Subdomain, PortoSearch, EmbarcacaoSearch, TerminalSearch, Pin }
+
+sealed interface TerminaisState {
+    /** Ainda não buscou (menos de 3 letras digitadas). */
+    data object Idle : TerminaisState
+    data object Loading : TerminaisState
+    data class Loaded(val terminais: List<Terminal>) : TerminaisState
+    data class Error(val message: String) : TerminaisState
+}
 
 sealed interface PrinterTestState {
     data object Idle : PrinterTestState

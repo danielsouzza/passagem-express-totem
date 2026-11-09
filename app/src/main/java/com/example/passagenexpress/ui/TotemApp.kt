@@ -20,6 +20,7 @@ import com.example.passagenexpress.ui.navigation.TotemNavHost
 fun TotemApp(viewModel: TotemRootViewModel = hiltViewModel()) {
     val destination by viewModel.rootDestination.collectAsStateWithLifecycle()
     val language by viewModel.language.collectAsStateWithLifecycle()
+    val modalidades by viewModel.modalidades.collectAsStateWithLifecycle()
     val navController = rememberNavController()
 
     ProvideAppLocale(language = language) {
@@ -49,6 +50,7 @@ fun TotemApp(viewModel: TotemRootViewModel = hiltViewModel()) {
                         TotemNavHost(
                             navController = navController,
                             startDestination = IDLE_ROUTE,
+                            modalidades = modalidades,
                         )
                     }
                 }

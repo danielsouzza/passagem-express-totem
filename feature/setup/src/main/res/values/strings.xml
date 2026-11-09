@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="setup_title">Configuração do totem</string>
-    <string name="setup_step_subdomain_title">1. Identificação da empresa</string>
+    <string name="setup_step_subdomain_title">Identificação da empresa</string>
     <string name="setup_step_subdomain_subtitle">Informe o subdomínio que identifica este totem (opcional). Deixe em branco se o backend não usa multi-tenant.</string>
     <string name="setup_subdomain_label">Subdomínio (opcional)</string>
     <string name="setup_subdomain_hint">empresa-x</string>
-    <string name="setup_step_porto_title">2. Porto de operação</string>
+    <string name="setup_step_porto_title">Porto de operação</string>
     <string name="setup_step_porto_subtitle">Escolha o porto onde este totem está instalado.</string>
     <string name="setup_loading_portos">Carregando portos…</string>
     <string name="setup_no_portos_title">Nenhum porto encontrado</string>
@@ -14,7 +14,7 @@
     <string name="setup_porto_search_empty">Nenhum porto bate com a busca</string>
     <string name="setup_porto_clear_search">Limpar busca</string>
     <string name="setup_porto_skip">Pular esta etapa</string>
-    <string name="setup_step_embarcacao_title">3. Embarcação (opcional)</string>
+    <string name="setup_step_embarcacao_title">Embarcação (opcional)</string>
     <string name="setup_step_embarcacao_subtitle">Se este totem fica a bordo de uma embarcação, selecione-a para listar apenas as viagens dela. Deixe em branco se o totem é fixo em terra.</string>
     <string name="setup_loading_embarcacoes">Carregando embarcações…</string>
     <string name="setup_no_embarcacoes_title">Nenhuma embarcação encontrada</string>
@@ -22,7 +22,7 @@
     <string name="setup_embarcacao_search_hint">Buscar embarcação ou empresa</string>
     <string name="setup_embarcacao_search_empty">Nenhuma embarcação bate com a busca</string>
     <string name="setup_embarcacao_skip">Pular esta etapa</string>
-    <string name="setup_step_printer_title">4. Impressora de bilhetes</string>
+    <string name="setup_step_printer_title">Impressora de bilhetes</string>
     <string name="setup_step_printer_subtitle">Selecione a impressora térmica USB conectada ao totem e faça um teste de impressão.</string>
     <string name="setup_printer_refresh">Atualizar lista</string>
     <string name="setup_printer_empty">Nenhuma impressora USB detectada. Conecte a impressora e toque em \"Atualizar lista\".</string>
@@ -32,11 +32,11 @@
     <string name="setup_printer_skip">Pular esta etapa</string>
     <string name="setup_paper_width_title">Largura do papel</string>
     <string name="setup_paper_width_columns">%1$d colunas</string>
-    <string name="setup_step_language_title">5. Idioma padrão</string>
+    <string name="setup_step_language_title">Idioma padrão</string>
     <string name="setup_step_language_subtitle">Define o idioma que aparece para o cliente quando ele toca para começar.</string>
     <string name="setup_language_pt">Português (Brasil)</string>
     <string name="setup_language_en">English</string>
-    <string name="setup_step_pin_title">6. PIN de acesso</string>
+    <string name="setup_step_pin_title">PIN de acesso</string>
     <string name="setup_step_pin_subtitle">Crie um PIN numérico (mín. 4 dígitos) para proteger o acesso às configurações do totem.</string>
     <string name="setup_pin_label">PIN de acesso</string>
     <string name="setup_pin_hint">Toque para digitar</string>
@@ -51,4 +51,20 @@
     <string name="setup_keypad_delete">Apagar</string>
     <string name="setup_keypad_space">Espaço</string>
     <string name="setup_keypad_shift">Maiúsculas</string>
+    <string name="setup_step_modalidade_title">Modalidades de venda</string>
+    <string name="setup_step_modalidade_subtitle">Escolha o que este totem vende. Com as duas ativas, o cliente escolhe entre barco e ônibus ao tocar em Começar.</string>
+    <string name="setup_modalidade_hidro">Hidroviário</string>
+    <string name="setup_modalidade_hidro_desc">Passagens de barco, lancha e ferry</string>
+    <string name="setup_modalidade_rodo">Rodoviário</string>
+    <string name="setup_modalidade_rodo_desc">Passagens de ônibus</string>
+    <string name="setup_modalidade_min">Selecione ao menos uma modalidade.</string>
+    <string name="setup_step_terminal_title">Terminal rodoviário</string>
+    <string name="setup_step_terminal_subtitle">Escolha o terminal onde este totem está instalado. Ele será a origem de todas as buscas de ônibus.</string>
+    <string name="setup_terminal_search_hint">Buscar cidade ou terminal</string>
+    <string name="setup_terminal_min_chars">Digite ao menos 3 letras para buscar.</string>
+    <string name="setup_terminal_loading">Buscando terminais…</string>
+    <string name="setup_terminal_empty">Nenhum terminal encontrado para essa busca.</string>
+    <string name="setup_terminal_error_title">Falha ao buscar terminais</string>
+    <string name="setup_terminal_all">Todos os terminais de %1$s - %2$s</string>
+    <string name="setup_terminal_selected">Terminal escolhido</string>
 </resources>

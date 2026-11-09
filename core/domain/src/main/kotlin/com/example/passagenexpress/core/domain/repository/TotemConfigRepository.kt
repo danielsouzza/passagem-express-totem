@@ -1,6 +1,7 @@
 package com.example.passagenexpress.core.domain.repository
 
 import com.example.passagenexpress.core.domain.model.AppLanguage
+import com.example.passagenexpress.core.domain.model.Modalidade
 import com.example.passagenexpress.core.domain.model.PaperWidth
 import com.example.passagenexpress.core.domain.model.Porto
 import com.example.passagenexpress.core.domain.model.TotemConfig
@@ -26,6 +27,10 @@ interface TotemConfigRepository {
      * Valores em branco são removidos e não vão no pedido.
      */
     suspend fun setOrigemVenda(agente: String, qr: String)
+    /** Modalidades vendidas pelo totem (não vazio — quem chama garante). */
+    suspend fun setModalidades(modalidades: Set<Modalidade>)
+    /** Terminal rodoviário de origem fixo; slug vazio limpa. */
+    suspend fun setTerminal(slug: String, nome: String)
     suspend fun completeSetup()
     suspend fun resetSetup()
 }

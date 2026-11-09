@@ -14,7 +14,12 @@ import com.example.passagenexpress.core.domain.usecase.BuscarPortosUseCase
 import com.example.passagenexpress.core.domain.usecase.ListarImpressorasUseCase
 import com.example.passagenexpress.core.domain.usecase.SincronizarTemaUseCase
 import com.example.passagenexpress.core.domain.usecase.TestarImpressaoUseCase
+import com.example.passagenexpress.core.domain.model.Modalidade
+import com.example.passagenexpress.core.domain.model.onibus.LocalOnibus
+import com.example.passagenexpress.core.domain.usecase.onibus.BuscarTerminaisUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -30,10 +35,13 @@ class SettingsViewModel @Inject constructor(
     private val listarImpressoras: ListarImpressorasUseCase,
     private val testarImpressao: TestarImpressaoUseCase,
     private val sincronizarTema: SincronizarTemaUseCase,
+    private val buscarTerminais: BuscarTerminaisUseCase,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SettingsUiState())
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
+
+    private var terminalSearchJob: Job? = null
 
     init {
         // Observa a config para refletir sempre os valores persistidos no hub, mesmo após salvar.
@@ -53,6 +61,9 @@ class SettingsViewModel @Inject constructor(
                         currentEmbarcacaoNome = config.embarcacaoNome,
                         currentAgente = config.agente,
                         currentOrigemQr = config.origemQr,
+                        currentModalidades = config.modalidades,
+                        currentTerminalSlug = config.terminalSlug,
+                        currentTerminalNome = config.terminalNome,
                     )
                 }
             }
@@ -167,6 +178,99 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    // --- Modalidades ------------------------------------------------------
+
+    fun onEditModalidades() {
+        _uiState.update {
+            it.copy(
+                editing = SettingsField.Modalidades,
+                modalidadesDraft = it.currentModalidades,
+                keypadField = null,
+                savedNotice = null,
+            )
+        }
+    }
+
+    fun onModalidadeToggled(modalidade: Modalidade) {
+        _uiState.update { state ->
+            val draft = state.modalidadesDraft
+            state.copy(modalidadesDraft = if (modalidade in draft) draft - modalidade else draft + modalidade)
+        }
+    }
+
+    fun onSaveModalidades() {
+        val state = _uiState.value
+        if (!state.canSaveModalidades) return
+        viewModelScope.launch {
+            totemConfigRepository.setModalidades(state.modalidadesDraft)
+            _uiState.update { it.copy(editing = null, savedNotice = SettingsField.Modalidades) }
+        }
+    }
+
+    // --- Terminal rodoviário ----------------------------------------------
+
+    fun onEditTerminal() {
+        terminalSearchJob?.cancel()
+        _uiState.update {
+            it.copy(
+                editing = SettingsField.Terminal,
+                terminalQuery = "",
+                terminais = SettingsTerminaisState.Idle,
+                selectedTerminal = it.currentTerminalSlug.takeIf { s -> s.isNotEmpty() }
+                    ?.let { slug -> LocalOnibus(slug, it.currentTerminalNome) },
+                // Fluxo guiado: já abre o teclado na busca.
+                keypadField = SettingsKeypadField.TerminalSearch,
+                savedNotice = null,
+            )
+        }
+    }
+
+    fun onTerminalQueryClear() {
+        terminalSearchJob?.cancel()
+        // Mantém o teclado aberto: limpar é pra digitar outra busca.
+        _uiState.update {
+            it.copy(
+                terminalQuery = "",
+                terminais = SettingsTerminaisState.Idle,
+                keypadField = SettingsKeypadField.TerminalSearch,
+            )
+        }
+    }
+
+    fun onRetryTerminais() = scheduleTerminalSearch(debounce = false)
+
+    private fun scheduleTerminalSearch(debounce: Boolean = true) {
+        terminalSearchJob?.cancel()
+        val query = _uiState.value.terminalQuery.trim()
+        if (query.length < BuscarTerminaisUseCase.MinChars) {
+            _uiState.update { it.copy(terminais = SettingsTerminaisState.Idle) }
+            return
+        }
+        terminalSearchJob = viewModelScope.launch {
+            if (debounce) delay(SEARCH_DEBOUNCE_MS)
+            _uiState.update { it.copy(terminais = SettingsTerminaisState.Loading) }
+            when (val result = buscarTerminais(query)) {
+                is AppResult.Success ->
+                    _uiState.update { it.copy(terminais = SettingsTerminaisState.Loaded(result.value)) }
+                is AppResult.Failure -> _uiState.update {
+                    it.copy(terminais = SettingsTerminaisState.Error(result.error.message ?: "Erro desconhecido"))
+                }
+            }
+        }
+    }
+
+    fun onTerminalSelected(local: LocalOnibus) {
+        _uiState.update { it.copy(selectedTerminal = local, keypadField = null) }
+    }
+
+    fun onSaveTerminal() {
+        val terminal = _uiState.value.selectedTerminal ?: return
+        viewModelScope.launch {
+            totemConfigRepository.setTerminal(terminal.slug, terminal.nome)
+            _uiState.update { it.copy(editing = null, keypadField = null, savedNotice = SettingsField.Terminal) }
+        }
+    }
+
     fun onEditOrigemVenda() {
         _uiState.update {
             it.copy(
@@ -249,6 +353,7 @@ class SettingsViewModel @Inject constructor(
     }
 
     fun onKeypadChar(c: Char) {
+        var terminalChanged = false
         _uiState.update { state ->
             when (state.keypadField) {
                 // Subdomínio é sempre minúsculo e sem espaço (regra de DNS/slug).
@@ -259,6 +364,10 @@ class SettingsViewModel @Inject constructor(
                     state.copy(portoSearchQuery = state.portoSearchQuery + c)
                 SettingsKeypadField.EmbarcacaoSearch ->
                     state.copy(embarcacaoSearchQuery = state.embarcacaoSearchQuery + c)
+                SettingsKeypadField.TerminalSearch -> {
+                    terminalChanged = true
+                    state.copy(terminalQuery = state.terminalQuery + c)
+                }
                 // Códigos de origem: sem espaço e sempre maiúsculos (ex.: TOTEM-PORTO-MANAUS-01).
                 SettingsKeypadField.Agente ->
                     if (c == ' ' || state.agenteInput.length >= MAX_ORIGEM_LENGTH) state
@@ -269,9 +378,11 @@ class SettingsViewModel @Inject constructor(
                 null -> state
             }
         }
+        if (terminalChanged) scheduleTerminalSearch()
     }
 
     fun onKeypadBackspace() {
+        var terminalChanged = false
         _uiState.update { state ->
             when (state.keypadField) {
                 SettingsKeypadField.Subdomain ->
@@ -280,6 +391,10 @@ class SettingsViewModel @Inject constructor(
                     state.copy(portoSearchQuery = state.portoSearchQuery.dropLast(1))
                 SettingsKeypadField.EmbarcacaoSearch ->
                     state.copy(embarcacaoSearchQuery = state.embarcacaoSearchQuery.dropLast(1))
+                SettingsKeypadField.TerminalSearch -> {
+                    terminalChanged = true
+                    state.copy(terminalQuery = state.terminalQuery.dropLast(1))
+                }
                 SettingsKeypadField.Agente ->
                     state.copy(agenteInput = state.agenteInput.dropLast(1))
                 SettingsKeypadField.OrigemQr ->
@@ -287,6 +402,7 @@ class SettingsViewModel @Inject constructor(
                 null -> state
             }
         }
+        if (terminalChanged) scheduleTerminalSearch()
     }
 
     fun onPortoSearchChange(query: String) {
@@ -412,5 +528,6 @@ class SettingsViewModel @Inject constructor(
         const val MAX_PIN_LENGTH = 12
         // Limite defensivo dos códigos de agente/origem digitados no teclado on-screen.
         const val MAX_ORIGEM_LENGTH = 64
+        const val SEARCH_DEBOUNCE_MS = 400L
     }
 }

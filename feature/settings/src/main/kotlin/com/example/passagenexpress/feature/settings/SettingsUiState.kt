@@ -2,6 +2,9 @@ package com.example.passagenexpress.feature.settings
 
 import com.example.passagenexpress.core.domain.model.AppLanguage
 import com.example.passagenexpress.core.domain.model.Embarcacao
+import com.example.passagenexpress.core.domain.model.Modalidade
+import com.example.passagenexpress.core.domain.model.onibus.LocalOnibus
+import com.example.passagenexpress.core.domain.model.onibus.Terminal
 import com.example.passagenexpress.core.domain.model.PaperWidth
 import com.example.passagenexpress.core.domain.model.Porto
 import com.example.passagenexpress.core.domain.model.TotemConfig
@@ -26,6 +29,15 @@ data class SettingsUiState(
     val currentEmbarcacaoNome: String = "",
     val currentAgente: String = "",
     val currentOrigemQr: String = "",
+    val currentModalidades: Set<Modalidade> = setOf(Modalidade.Hidroviario),
+    val currentTerminalSlug: String = "",
+    val currentTerminalNome: String = "",
+    // Editor de modalidades.
+    val modalidadesDraft: Set<Modalidade> = setOf(Modalidade.Hidroviario),
+    // Editor de terminal rodoviário (busca na API com ≥ 3 letras).
+    val terminalQuery: String = "",
+    val terminais: SettingsTerminaisState = SettingsTerminaisState.Idle,
+    val selectedTerminal: LocalOnibus? = null,
     // Seção em edição (null = hub). Cada editor tem seu próprio buffer abaixo.
     val editing: SettingsField? = null,
     /** Última seção salva com sucesso — mostra confirmação no hub. */
@@ -62,11 +74,32 @@ data class SettingsUiState(
      * totem fica sem porto E sem embarcação, o que derruba `setupComplete` e manda o app de volta
      * pro wizard inteiro (ver `TotemRootViewModel.rootDestination`).
      */
-    val canSavePorto: Boolean get() = selectedPorto != null || (portoCleared && currentEmbarcacaoId != null)
+    val canSavePorto: Boolean
+        get() = selectedPorto != null ||
+            (portoCleared && (currentEmbarcacaoId != null || Modalidade.Hidroviario !in currentModalidades))
 
-    /** Espelha [canSavePorto]: desvincular a embarcação só é permitido se já houver porto. */
-    val canSaveEmbarcacao: Boolean get() = selectedEmbarcacao != null || currentPortoNome.isNotEmpty()
+    /**
+     * Espelha [canSavePorto]: desvincular a embarcação só é permitido se já houver porto (ou se o
+     * totem não vende barco — aí porto/embarcação não importam).
+     */
+    val canSaveEmbarcacao: Boolean
+        get() = selectedEmbarcacao != null || currentPortoNome.isNotEmpty() ||
+            Modalidade.Hidroviario !in currentModalidades
     val canSavePrinter: Boolean get() = selectedPrinter != null
+
+    /** Origem do barco já configurada (porto ou embarcação). */
+    val hidroviarioConfigurado: Boolean get() = currentPortoNome.isNotEmpty() || currentEmbarcacaoId != null
+
+    /**
+     * Só salva se cada modalidade marcada já tiver sua origem configurada — senão o totem deixa de
+     * ser "operacional" e o app cai no wizard inteiro (mesma regra de [canSavePorto]).
+     */
+    val canSaveModalidades: Boolean
+        get() = modalidadesDraft.isNotEmpty() &&
+            (Modalidade.Hidroviario !in modalidadesDraft || hidroviarioConfigurado) &&
+            (Modalidade.Rodoviario !in modalidadesDraft || currentTerminalSlug.isNotEmpty())
+
+    val canSaveTerminal: Boolean get() = selectedTerminal != null
     val canSavePin: Boolean get() = pinDraft.length >= TotemConfig.MinPinLength
 
     /** Rótulo da impressora configurada (VID/PID) ou vazio quando não definida. */
@@ -101,10 +134,17 @@ data class SettingsUiState(
 }
 
 /** Seções editáveis nas configurações. */
-enum class SettingsField { Subdomain, Porto, Embarcacao, OrigemVenda, Printer, Language, Pin }
+enum class SettingsField { Subdomain, Modalidades, Porto, Embarcacao, Terminal, OrigemVenda, Printer, Language, Pin }
 
 /** Campos de texto que recebem entrada pelo teclado on-screen do totem. */
-enum class SettingsKeypadField { Subdomain, PortoSearch, EmbarcacaoSearch, Agente, OrigemQr }
+enum class SettingsKeypadField { Subdomain, PortoSearch, EmbarcacaoSearch, TerminalSearch, Agente, OrigemQr }
+
+sealed interface SettingsTerminaisState {
+    data object Idle : SettingsTerminaisState
+    data object Loading : SettingsTerminaisState
+    data class Loaded(val terminais: List<Terminal>) : SettingsTerminaisState
+    data class Error(val message: String) : SettingsTerminaisState
+}
 
 sealed interface PrinterTestState {
     data object Idle : PrinterTestState

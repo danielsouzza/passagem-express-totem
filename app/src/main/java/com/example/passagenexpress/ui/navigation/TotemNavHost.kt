@@ -6,6 +6,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
+import com.example.passagenexpress.core.domain.model.Modalidade
+import com.example.passagenexpress.feature.bus.navigation.BUS_GRAPH_ROUTE
+import com.example.passagenexpress.feature.bus.navigation.MODAL_CHOICE_ROUTE
+import com.example.passagenexpress.feature.bus.navigation.busGraph
+import com.example.passagenexpress.feature.bus.navigation.modalChoiceScreen
 import com.example.passagenexpress.feature.idle.navigation.IDLE_ROUTE
 import com.example.passagenexpress.feature.idle.navigation.idleScreen
 import com.example.passagenexpress.feature.passenger.navigation.passengerRoute
@@ -28,7 +33,16 @@ fun TotemNavHost(
     navController: NavHostController,
     startDestination: String,
     modifier: Modifier = Modifier,
+    /** O que o totem vende — decide pra onde o "Começar" leva. */
+    modalidades: Set<Modalidade> = setOf(Modalidade.Hidroviario),
 ) {
+    // Volta ao Idle limpando a pilha da compra (mesmo efeito do botão Início).
+    val voltarAoIdle: () -> Unit = {
+        navController.navigate(IDLE_ROUTE) {
+            popUpTo(IDLE_ROUTE) { inclusive = false }
+            launchSingleTop = true
+        }
+    }
     NavHost(
         navController = navController,
         startDestination = startDestination,
@@ -50,7 +64,14 @@ fun TotemNavHost(
         )
         idleScreen(
             onStart = {
-                navController.navigate(TRIP_ROUTE) {
+                // Só barco → fluxo hidroviário original (inalterado); só ônibus → fluxo rodoviário;
+                // as duas → pergunta ao cliente.
+                val destino = when {
+                    Modalidade.Hidroviario in modalidades && Modalidade.Rodoviario in modalidades -> MODAL_CHOICE_ROUTE
+                    Modalidade.Rodoviario in modalidades -> BUS_GRAPH_ROUTE
+                    else -> TRIP_ROUTE
+                }
+                navController.navigate(destino) {
                     launchSingleTop = true
                 }
             },
@@ -65,6 +86,16 @@ fun TotemNavHost(
                     launchSingleTop = true
                 }
             },
+        )
+        modalChoiceScreen(
+            onBoat = { navController.navigate(TRIP_ROUTE) { launchSingleTop = true } },
+            onBus = { navController.navigate(BUS_GRAPH_ROUTE) { launchSingleTop = true } },
+            onBack = { navController.popBackStack() },
+        )
+        busGraph(
+            navController = navController,
+            onExit = { navController.popBackStack() },
+            onFinished = voltarAoIdle,
         )
         settingsScreen(
             onBack = {

@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="setup_title">Totem setup</string>
-    <string name="setup_step_subdomain_title">1. Company identification</string>
+    <string name="setup_step_subdomain_title">Company identification</string>
     <string name="setup_step_subdomain_subtitle">Enter the subdomain that identifies this totem (optional). Leave blank if the backend doesn\'t use multi-tenant.</string>
     <string name="setup_subdomain_label">Subdomain (optional)</string>
     <string name="setup_subdomain_hint">company-x</string>
-    <string name="setup_step_porto_title">2. Operating port</string>
+    <string name="setup_step_porto_title">Operating port</string>
     <string name="setup_step_porto_subtitle">Choose the port where this totem is installed.</string>
     <string name="setup_loading_portos">Loading ports…</string>
     <string name="setup_no_portos_title">No ports found</string>
@@ -14,7 +14,7 @@
     <string name="setup_porto_search_empty">No port matches your search</string>
     <string name="setup_porto_clear_search">Clear search</string>
     <string name="setup_porto_skip">Skip this step</string>
-    <string name="setup_step_embarcacao_title">3. Vessel (optional)</string>
+    <string name="setup_step_embarcacao_title">Vessel (optional)</string>
     <string name="setup_step_embarcacao_subtitle">If this totem stays aboard a vessel, select it to list only that vessel\'s trips. Leave blank if the totem is fixed on land.</string>
     <string name="setup_loading_embarcacoes">Loading vessels…</string>
     <string name="setup_no_embarcacoes_title">No vessel found</string>
@@ -22,7 +22,7 @@
     <string name="setup_embarcacao_search_hint">Search vessel or company</string>
     <string name="setup_embarcacao_search_empty">No vessel matches your search</string>
     <string name="setup_embarcacao_skip">Skip this step</string>
-    <string name="setup_step_printer_title">4. Ticket printer</string>
+    <string name="setup_step_printer_title">Ticket printer</string>
     <string name="setup_step_printer_subtitle">Select the USB thermal printer connected to the totem and run a test print.</string>
     <string name="setup_printer_refresh">Refresh list</string>
     <string name="setup_printer_empty">No USB printer detected. Connect the printer and tap \"Refresh list\".</string>
@@ -32,11 +32,11 @@
     <string name="setup_printer_skip">Skip this step</string>
     <string name="setup_paper_width_title">Paper width</string>
     <string name="setup_paper_width_columns">%1$d columns</string>
-    <string name="setup_step_language_title">5. Default language</string>
+    <string name="setup_step_language_title">Default language</string>
     <string name="setup_step_language_subtitle">Sets the language shown to the customer when they tap to start.</string>
     <string name="setup_language_pt">Português (Brasil)</string>
     <string name="setup_language_en">English</string>
-    <string name="setup_step_pin_title">6. Access PIN</string>
+    <string name="setup_step_pin_title">Access PIN</string>
     <string name="setup_step_pin_subtitle">Create a numeric PIN (min. 4 digits) to protect access to the totem settings.</string>
     <string name="setup_pin_label">Access PIN</string>
     <string name="setup_pin_hint">Tap to type</string>
@@ -51,4 +51,20 @@
     <string name="setup_keypad_delete">Delete</string>
     <string name="setup_keypad_space">Space</string>
     <string name="setup_keypad_shift">Uppercase</string>
+    <string name="setup_step_modalidade_title">Sales modes</string>
+    <string name="setup_step_modalidade_subtitle">Choose what this totem sells. With both enabled, customers pick boat or bus when they tap Start.</string>
+    <string name="setup_modalidade_hidro">Waterway</string>
+    <string name="setup_modalidade_hidro_desc">Boat, speedboat and ferry tickets</string>
+    <string name="setup_modalidade_rodo">Road</string>
+    <string name="setup_modalidade_rodo_desc">Bus tickets</string>
+    <string name="setup_modalidade_min">Select at least one mode.</string>
+    <string name="setup_step_terminal_title">Bus terminal</string>
+    <string name="setup_step_terminal_subtitle">Choose the terminal where this totem is installed. It will be the origin of every bus search.</string>
+    <string name="setup_terminal_search_hint">Search city or terminal</string>
+    <string name="setup_terminal_min_chars">Type at least 3 letters to search.</string>
+    <string name="setup_terminal_loading">Searching terminals…</string>
+    <string name="setup_terminal_empty">No terminal found for this search.</string>
+    <string name="setup_terminal_error_title">Could not load terminals</string>
+    <string name="setup_terminal_all">All terminals in %1$s - %2$s</string>
+    <string name="setup_terminal_selected">Selected terminal</string>
 </resources>

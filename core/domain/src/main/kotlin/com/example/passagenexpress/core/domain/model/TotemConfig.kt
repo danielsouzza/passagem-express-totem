@@ -31,7 +31,30 @@ data class TotemConfig(
      * `TOTEM-PORTO-MANAUS-01`. Vazio = não enviado. Equivale ao `?qr=` do QR no site.
      */
     val origemQr: String = "",
+    /** Modalidades vendidas. Default só hidroviário — totens antigos continuam idênticos. */
+    val modalidades: Set<Modalidade> = setOf(Modalidade.Hidroviario),
+    /** Terminal rodoviário de origem fixo do totem (slug usado em `from` na busca de ônibus). */
+    val terminalSlug: String = "",
+    val terminalNome: String = "",
 ) {
+    val vendeHidroviario: Boolean get() = Modalidade.Hidroviario in modalidades
+    val vendeRodoviario: Boolean get() = Modalidade.Rodoviario in modalidades
+
+    /** Hidroviário precisa de porto (totem em terra) ou embarcação (a bordo) pra listar viagens. */
+    val hidroviarioConfigurado: Boolean get() = portoSlug.isNotEmpty() || embarcacaoId != null
+
+    /** Rodoviário precisa do terminal de origem. */
+    val rodoviarioConfigurado: Boolean get() = terminalSlug.isNotEmpty()
+
+    /**
+     * Totem pronto pra vender: setup concluído, ao menos uma modalidade, e cada modalidade ativa
+     * com o que ela precisa. Para totens só-hidro equivale à regra antiga (porto ou embarcação).
+     */
+    val isOperacional: Boolean
+        get() = setupComplete && modalidades.isNotEmpty() &&
+            (!vendeHidroviario || hidroviarioConfigurado) &&
+            (!vendeRodoviario || rodoviarioConfigurado)
+
     companion object {
         /** Número mínimo de dígitos do PIN de acesso às configurações. */
         const val MinPinLength = 4

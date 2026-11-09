@@ -15,6 +15,12 @@ interface TicketPrinter {
     /** Monta e imprime um bilhete. Resolve o device pelo VID/PID salvo na config. */
     suspend fun print(bilhete: BilheteMapeado): AppResult<Unit>
 
+    /**
+     * Imprime um documento PDF pronto (ex.: boarding pass de ônibus, que o back devolve em PDF):
+     * cada página é renderizada, cortada nas margens brancas e rasterizada na largura da bobina.
+     */
+    suspend fun printPdf(pdf: ByteArray): AppResult<Unit>
+
     /** Imprime um ticket de teste curto (botão "Testar impressão" no setup). */
     suspend fun testPrint(): AppResult<Unit>
 

@@ -71,4 +71,23 @@
     <string name="settings_keypad_delete">Delete</string>
     <string name="settings_keypad_space">Space</string>
     <string name="settings_keypad_shift">Uppercase</string>
+    <string name="settings_section_modalidades">Sales modes</string>
+    <string name="settings_modalidades_subtitle">What this totem sells. With both enabled, customers pick boat or bus when they tap Start.</string>
+    <string name="settings_modalidade_hidro">Waterway</string>
+    <string name="settings_modalidade_hidro_desc">Boat, speedboat and ferry tickets</string>
+    <string name="settings_modalidade_rodo">Road</string>
+    <string name="settings_modalidade_rodo_desc">Bus tickets</string>
+    <string name="settings_modalidade_min">Select at least one mode.</string>
+    <string name="settings_modalidade_need_porto">To sell boat tickets, set the port or vessel first.</string>
+    <string name="settings_modalidade_need_terminal">To sell bus tickets, set the bus terminal first.</string>
+    <string name="settings_section_terminal">Bus terminal</string>
+    <string name="settings_terminal_subtitle">Terminal where the totem is installed. It is the origin of every bus search.</string>
+    <string name="settings_terminal_search_hint">Search city or terminal</string>
+    <string name="settings_terminal_tap_to_type">Tap to type</string>
+    <string name="settings_terminal_min_chars">Type at least 3 letters to search.</string>
+    <string name="settings_terminal_loading">Searching terminals…</string>
+    <string name="settings_terminal_empty">No terminal found for this search.</string>
+    <string name="settings_terminal_error_title">Could not load terminals</string>
+    <string name="settings_terminal_all">All terminals in %1$s - %2$s</string>
+    <string name="settings_terminal_selected">Selected terminal: %1$s</string>
 </resources>

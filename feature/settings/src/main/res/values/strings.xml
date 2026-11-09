@@ -71,4 +71,23 @@
     <string name="settings_keypad_delete">Apagar</string>
     <string name="settings_keypad_space">Espaço</string>
     <string name="settings_keypad_shift">Maiúsculas</string>
+    <string name="settings_section_modalidades">Modalidades de venda</string>
+    <string name="settings_modalidades_subtitle">O que este totem vende. Com as duas ativas, o cliente escolhe entre barco e ônibus ao tocar em Começar.</string>
+    <string name="settings_modalidade_hidro">Hidroviário</string>
+    <string name="settings_modalidade_hidro_desc">Passagens de barco, lancha e ferry</string>
+    <string name="settings_modalidade_rodo">Rodoviário</string>
+    <string name="settings_modalidade_rodo_desc">Passagens de ônibus</string>
+    <string name="settings_modalidade_min">Selecione ao menos uma modalidade.</string>
+    <string name="settings_modalidade_need_porto">Para vender barco, defina antes o porto ou a embarcação.</string>
+    <string name="settings_modalidade_need_terminal">Para vender ônibus, defina antes o terminal rodoviário.</string>
+    <string name="settings_section_terminal">Terminal rodoviário</string>
+    <string name="settings_terminal_subtitle">Terminal onde o totem está instalado. É a origem de todas as buscas de ônibus.</string>
+    <string name="settings_terminal_search_hint">Buscar cidade ou terminal</string>
+    <string name="settings_terminal_tap_to_type">Toque para digitar</string>
+    <string name="settings_terminal_min_chars">Digite ao menos 3 letras para buscar.</string>
+    <string name="settings_terminal_loading">Buscando terminais…</string>
+    <string name="settings_terminal_empty">Nenhum terminal encontrado para essa busca.</string>
+    <string name="settings_terminal_error_title">Falha ao buscar terminais</string>
+    <string name="settings_terminal_all">Todos os terminais de %1$s - %2$s</string>
+    <string name="settings_terminal_selected">Terminal escolhido: %1$s</string>
 </resources>

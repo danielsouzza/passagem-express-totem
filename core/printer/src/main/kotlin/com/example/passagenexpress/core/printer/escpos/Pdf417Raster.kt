@@ -42,6 +42,23 @@ internal object Pdf417Raster {
         return rasterize(scaleToWidth(bitmap, maxWidth, allowUpscale = upscale))
     }
 
+    /**
+     * Rasteriza um bitmap grande (ex.: página de PDF) em várias faixas `GS v 0` de até
+     * [stripHeight] linhas — um único bloco gigante estoura o buffer de impressoras baratas.
+     * O bitmap já deve estar na largura final.
+     */
+    fun toRasterStrips(bitmap: Bitmap, stripHeight: Int = 256): ByteArray {
+        val out = java.io.ByteArrayOutputStream()
+        var y = 0
+        while (y < bitmap.height) {
+            val h = minOf(stripHeight, bitmap.height - y)
+            val strip = Bitmap.createBitmap(bitmap, 0, y, bitmap.width, h)
+            out.write(rasterize(strip))
+            y += h
+        }
+        return out.toByteArray()
+    }
+
     private fun decode(dataUri: String): Bitmap? = runCatching {
         // "data:image/png;base64, iVBOR..." — corta o prefixo e tira espaços/quebras.
         val base64 = dataUri.substringAfter(",", dataUri).filterNot { it.isWhitespace() }

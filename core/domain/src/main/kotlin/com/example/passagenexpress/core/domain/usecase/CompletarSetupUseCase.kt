@@ -1,6 +1,8 @@
 package com.example.passagenexpress.core.domain.usecase
 
 import com.example.passagenexpress.core.domain.model.AppLanguage
+import com.example.passagenexpress.core.domain.model.Modalidade
+import com.example.passagenexpress.core.domain.model.onibus.LocalOnibus
 import com.example.passagenexpress.core.domain.model.PaperWidth
 import com.example.passagenexpress.core.domain.model.Porto
 import com.example.passagenexpress.core.domain.repository.TotemConfigRepository
@@ -19,10 +21,14 @@ class CompletarSetupUseCase @Inject constructor(
         printerVendorId: Int? = null,
         printerProductId: Int? = null,
         printerPaperWidth: PaperWidth = PaperWidth.MM58,
+        modalidades: Set<Modalidade> = setOf(Modalidade.Hidroviario),
+        terminal: LocalOnibus? = null,
     ) {
         totemConfigRepository.setSubdomain(subdomain)
+        totemConfigRepository.setModalidades(modalidades)
         if (porto != null) totemConfigRepository.setPorto(porto)
         totemConfigRepository.setEmbarcacao(embarcacaoId, embarcacaoNome)
+        totemConfigRepository.setTerminal(terminal?.slug.orEmpty(), terminal?.nome.orEmpty())
         if (printerVendorId != null && printerProductId != null) {
             totemConfigRepository.setPrinter(printerVendorId, printerProductId)
         }

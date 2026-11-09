@@ -69,6 +69,18 @@ fun SettingsScreen(
         onEditEmbarcacao = viewModel::onEditEmbarcacao,
         onEditOrigemVenda = viewModel::onEditOrigemVenda,
         onSaveOrigemVenda = viewModel::onSaveOrigemVenda,
+        modalidadeActions = ModalidadeActions(
+            onEdit = viewModel::onEditModalidades,
+            onToggle = viewModel::onModalidadeToggled,
+            onSave = viewModel::onSaveModalidades,
+        ),
+        terminalActions = TerminalActions(
+            onEdit = viewModel::onEditTerminal,
+            onClearQuery = viewModel::onTerminalQueryClear,
+            onRetry = viewModel::onRetryTerminais,
+            onSelected = viewModel::onTerminalSelected,
+            onSave = viewModel::onSaveTerminal,
+        ),
         onEditPrinter = viewModel::onEditPrinter,
         onEditLanguage = viewModel::onEditLanguage,
         onEditPin = viewModel::onEditPin,
@@ -113,6 +125,8 @@ private fun SettingsContent(
     onEditEmbarcacao: () -> Unit,
     onEditOrigemVenda: () -> Unit,
     onSaveOrigemVenda: () -> Unit,
+    modalidadeActions: ModalidadeActions,
+    terminalActions: TerminalActions,
     onEditPrinter: () -> Unit,
     onEditLanguage: () -> Unit,
     onEditPin: () -> Unit,
@@ -158,11 +172,15 @@ private fun SettingsContent(
             onEditPorto = onEditPorto,
             onEditEmbarcacao = onEditEmbarcacao,
             onEditOrigemVenda = onEditOrigemVenda,
+            onEditModalidades = modalidadeActions.onEdit,
+            onEditTerminal = terminalActions.onEdit,
             onEditPrinter = onEditPrinter,
             onEditLanguage = onEditLanguage,
             onEditPin = onEditPin,
         )
         else -> SettingsEditor(
+            modalidadeActions = modalidadeActions,
+            terminalActions = terminalActions,
             state = state,
             onCancelEdit = onCancelEdit,
             onOpenKeypad = onOpenKeypad,
@@ -252,6 +270,8 @@ private fun SettingsHub(
     onEditPorto: () -> Unit,
     onEditEmbarcacao: () -> Unit,
     onEditOrigemVenda: () -> Unit,
+    onEditModalidades: () -> Unit,
+    onEditTerminal: () -> Unit,
     onEditPrinter: () -> Unit,
     onEditLanguage: () -> Unit,
     onEditPin: () -> Unit,
@@ -283,6 +303,11 @@ private fun SettingsHub(
                 onClick = onEditSubdomain,
             )
             SettingRow(
+                label = stringResource(R.string.settings_section_modalidades),
+                value = modalidadesLabel(state.currentModalidades),
+                onClick = onEditModalidades,
+            )
+            SettingRow(
                 label = stringResource(R.string.settings_section_porto),
                 value = state.currentPortoNome.ifEmpty { stringResource(R.string.settings_value_empty) },
                 onClick = onEditPorto,
@@ -291,6 +316,11 @@ private fun SettingsHub(
                 label = stringResource(R.string.settings_section_embarcacao),
                 value = state.currentEmbarcacaoNome.ifEmpty { stringResource(R.string.settings_embarcacao_none) },
                 onClick = onEditEmbarcacao,
+            )
+            SettingRow(
+                label = stringResource(R.string.settings_section_terminal),
+                value = state.currentTerminalNome.ifEmpty { stringResource(R.string.settings_value_empty) },
+                onClick = onEditTerminal,
             )
             SettingRow(
                 label = stringResource(R.string.settings_section_origem_venda),
@@ -362,6 +392,8 @@ private fun SettingRow(label: String, value: String, onClick: () -> Unit) {
 
 @Composable
 private fun SettingsEditor(
+    modalidadeActions: ModalidadeActions,
+    terminalActions: TerminalActions,
     state: SettingsUiState,
     onCancelEdit: () -> Unit,
     onOpenKeypad: (SettingsKeypadField) -> Unit,
@@ -394,6 +426,8 @@ private fun SettingsEditor(
     val field = state.editing ?: return
     val (onSave, canSave) = when (field) {
         SettingsField.Subdomain -> onSaveSubdomain to true
+        SettingsField.Modalidades -> modalidadeActions.onSave to state.canSaveModalidades
+        SettingsField.Terminal -> terminalActions.onSave to state.canSaveTerminal
         SettingsField.Porto -> onSavePorto to state.canSavePorto
         SettingsField.Embarcacao -> onSaveEmbarcacao to state.canSaveEmbarcacao
         // Ambos opcionais: salvar vazio = totem não envia agente/qr.
@@ -472,6 +506,22 @@ private fun SettingsEditor(
                     onEmbarcacaoSelected = onEmbarcacaoSelected,
                     onEmbarcacaoCleared = onEmbarcacaoCleared,
                     onRetry = onRetryEmbarcacoes,
+                )
+                SettingsField.Modalidades -> ModalidadesEditor(
+                    draft = state.modalidadesDraft,
+                    hidroviarioConfigurado = state.hidroviarioConfigurado,
+                    terminalConfigurado = state.currentTerminalSlug.isNotEmpty(),
+                    onToggle = modalidadeActions.onToggle,
+                )
+                SettingsField.Terminal -> TerminalEditor(
+                    query = state.terminalQuery,
+                    terminais = state.terminais,
+                    selected = state.selectedTerminal,
+                    searchFocused = state.keypadField == SettingsKeypadField.TerminalSearch,
+                    onSearchClick = { onOpenKeypad(SettingsKeypadField.TerminalSearch) },
+                    onClearSearch = terminalActions.onClearQuery,
+                    onSelected = terminalActions.onSelected,
+                    onRetry = terminalActions.onRetry,
                 )
                 SettingsField.OrigemVenda -> OrigemVendaEditor(
                     origemQr = state.origemQrInput,
@@ -961,6 +1011,8 @@ private fun SettingsKeypadSlot(
             stringResource(R.string.settings_embarcacao_search_hint) to state.embarcacaoSearchQuery
         SettingsKeypadField.OrigemQr ->
             stringResource(R.string.settings_origem_qr_label) to state.origemQrInput
+        SettingsKeypadField.TerminalSearch ->
+            stringResource(R.string.settings_terminal_search_hint) to state.terminalQuery
         SettingsKeypadField.Agente ->
             stringResource(R.string.settings_origem_agente_label) to state.agenteInput
     }
@@ -981,6 +1033,8 @@ private fun SettingsKeypadSlot(
 
 private fun sectionTitleRes(field: SettingsField): Int = when (field) {
     SettingsField.Subdomain -> R.string.settings_section_subdomain
+    SettingsField.Modalidades -> R.string.settings_section_modalidades
+    SettingsField.Terminal -> R.string.settings_section_terminal
     SettingsField.Porto -> R.string.settings_section_porto
     SettingsField.Embarcacao -> R.string.settings_section_embarcacao
     SettingsField.OrigemVenda -> R.string.settings_section_origem_venda
@@ -991,6 +1045,8 @@ private fun sectionTitleRes(field: SettingsField): Int = when (field) {
 
 private fun sectionSubtitleRes(field: SettingsField): Int = when (field) {
     SettingsField.Subdomain -> R.string.settings_subdomain_subtitle
+    SettingsField.Modalidades -> R.string.settings_modalidades_subtitle
+    SettingsField.Terminal -> R.string.settings_terminal_subtitle
     SettingsField.Porto -> R.string.settings_porto_subtitle
     SettingsField.Embarcacao -> R.string.settings_embarcacao_subtitle
     SettingsField.OrigemVenda -> R.string.settings_origem_venda_subtitle
@@ -1020,6 +1076,8 @@ private fun SettingsHubPreview() {
             onEditPorto = {},
             onEditEmbarcacao = {},
             onEditOrigemVenda = {},
+            onEditModalidades = {},
+            onEditTerminal = {},
             onEditPrinter = {},
             onEditLanguage = {},
             onEditPin = {},

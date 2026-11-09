@@ -19,8 +19,12 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.DirectionsBoat
+import androidx.compose.material.icons.filled.DirectionsBus
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.outlined.Circle
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -48,6 +52,9 @@ import com.example.passagenexpress.core.designsystem.component.TotemSecondaryBut
 import com.example.passagenexpress.core.designsystem.theme.TotemTheme
 import com.example.passagenexpress.core.domain.model.AppLanguage
 import com.example.passagenexpress.core.domain.model.Embarcacao
+import com.example.passagenexpress.core.domain.model.Modalidade
+import com.example.passagenexpress.core.domain.model.onibus.LocalOnibus
+import com.example.passagenexpress.core.domain.model.onibus.toOpcoes
 import com.example.passagenexpress.core.domain.model.PaperWidth
 import com.example.passagenexpress.core.domain.model.Porto
 
@@ -65,6 +72,12 @@ fun SetupWizardScreen(
     SetupWizardContent(
         state = state,
         onAdvanceFromSubdomain = viewModel::onAdvanceFromSubdomain,
+        onModalidadeToggled = viewModel::onModalidadeToggled,
+        onAdvanceFromModalidade = viewModel::onAdvanceFromModalidade,
+        onTerminalSelected = viewModel::onTerminalSelected,
+        onTerminalQueryClear = viewModel::onTerminalQueryClear,
+        onRetryTerminais = viewModel::onRetryTerminais,
+        onAdvanceFromTerminal = viewModel::onAdvanceFromTerminal,
         onRetryPortos = viewModel::onRetryPortos,
         onPortoSearchChange = viewModel::onPortoSearchChange,
         onPortoSelected = viewModel::onPortoSelected,
@@ -93,6 +106,12 @@ fun SetupWizardScreen(
 private fun SetupWizardContent(
     state: SetupWizardUiState,
     onAdvanceFromSubdomain: () -> Unit,
+    onModalidadeToggled: (Modalidade) -> Unit,
+    onAdvanceFromModalidade: () -> Unit,
+    onTerminalSelected: (LocalOnibus) -> Unit,
+    onTerminalQueryClear: () -> Unit,
+    onRetryTerminais: () -> Unit,
+    onAdvanceFromTerminal: () -> Unit,
     onRetryPortos: () -> Unit,
     onPortoSearchChange: (String) -> Unit,
     onPortoSelected: (Porto) -> Unit,
@@ -117,16 +136,20 @@ private fun SetupWizardContent(
 ) {
     val titleRes = when (state.step) {
         SetupStep.Subdomain -> R.string.setup_step_subdomain_title
+        SetupStep.Modalidade -> R.string.setup_step_modalidade_title
         SetupStep.Porto -> R.string.setup_step_porto_title
         SetupStep.Embarcacao -> R.string.setup_step_embarcacao_title
+        SetupStep.Terminal -> R.string.setup_step_terminal_title
         SetupStep.Printer -> R.string.setup_step_printer_title
         SetupStep.Language -> R.string.setup_step_language_title
         SetupStep.Pin -> R.string.setup_step_pin_title
     }
     val subtitleRes = when (state.step) {
         SetupStep.Subdomain -> R.string.setup_step_subdomain_subtitle
+        SetupStep.Modalidade -> R.string.setup_step_modalidade_subtitle
         SetupStep.Porto -> R.string.setup_step_porto_subtitle
         SetupStep.Embarcacao -> R.string.setup_step_embarcacao_subtitle
+        SetupStep.Terminal -> R.string.setup_step_terminal_subtitle
         SetupStep.Printer -> R.string.setup_step_printer_subtitle
         SetupStep.Language -> R.string.setup_step_language_subtitle
         SetupStep.Pin -> R.string.setup_step_pin_subtitle
@@ -140,6 +163,8 @@ private fun SetupWizardContent(
                 state = state,
                 onBack = onBack,
                 onAdvanceFromSubdomain = onAdvanceFromSubdomain,
+                onAdvanceFromModalidade = onAdvanceFromModalidade,
+                onAdvanceFromTerminal = onAdvanceFromTerminal,
                 onAdvanceFromPorto = onAdvanceFromPorto,
                 onAdvanceFromEmbarcacao = onAdvanceFromEmbarcacao,
                 onAdvanceFromPrinter = onAdvanceFromPrinter,
@@ -158,7 +183,7 @@ private fun SetupWizardContent(
         }) else null,
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
-            StepIndicator(currentStep = state.step)
+            StepIndicator(steps = state.steps, currentStep = state.step)
             Spacer(Modifier.size(TotemTheme.dimens.space24))
             AnimatedContent(
                 targetState = state.step,
@@ -170,6 +195,20 @@ private fun SetupWizardContent(
                         value = state.subdomainInput,
                         focused = state.keypadField == SetupKeypadField.Subdomain,
                         onClick = { onOpenKeypad(SetupKeypadField.Subdomain) },
+                    )
+                    SetupStep.Modalidade -> ModalidadeStep(
+                        selected = state.modalidades,
+                        onToggle = onModalidadeToggled,
+                    )
+                    SetupStep.Terminal -> TerminalStep(
+                        query = state.terminalQuery,
+                        terminais = state.terminais,
+                        selected = state.selectedTerminal,
+                        searchFocused = state.keypadField == SetupKeypadField.TerminalSearch,
+                        onSearchClick = { onOpenKeypad(SetupKeypadField.TerminalSearch) },
+                        onClearSearch = onTerminalQueryClear,
+                        onSelected = onTerminalSelected,
+                        onRetry = onRetryTerminais,
                     )
                     SetupStep.Porto -> PortoStep(
                         portos = state.portos,
@@ -223,6 +262,8 @@ private fun WizardFooter(
     state: SetupWizardUiState,
     onBack: () -> Unit,
     onAdvanceFromSubdomain: () -> Unit,
+    onAdvanceFromModalidade: () -> Unit,
+    onAdvanceFromTerminal: () -> Unit,
     onAdvanceFromPorto: () -> Unit,
     onAdvanceFromEmbarcacao: () -> Unit,
     onAdvanceFromPrinter: () -> Unit,
@@ -239,6 +280,16 @@ private fun WizardFooter(
                 text = stringRes(R.string.setup_continue),
                 onClick = onAdvanceFromSubdomain,
                 enabled = state.canAdvanceFromSubdomain,
+            )
+            SetupStep.Modalidade -> TotemPrimaryButton(
+                text = stringRes(R.string.setup_continue),
+                onClick = onAdvanceFromModalidade,
+                enabled = state.canAdvanceFromModalidade,
+            )
+            SetupStep.Terminal -> TotemPrimaryButton(
+                text = stringRes(R.string.setup_continue),
+                onClick = onAdvanceFromTerminal,
+                enabled = state.canAdvanceFromTerminal,
             )
             SetupStep.Porto -> TotemPrimaryButton(
                 text = if (state.selectedPorto == null) {
@@ -408,13 +459,14 @@ private fun PaperWidth.mmLabel(): String = when (this) {
 }
 
 @Composable
-private fun StepIndicator(currentStep: SetupStep) {
+private fun StepIndicator(steps: List<SetupStep>, currentStep: SetupStep) {
+    val currentIndex = steps.indexOf(currentStep)
     Row(
         horizontalArrangement = Arrangement.spacedBy(TotemTheme.dimens.space8),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        SetupStep.entries.forEach { step ->
-            val active = step.ordinal <= currentStep.ordinal
+        steps.forEachIndexed { index, step ->
+            val active = index <= currentIndex
             Surface(
                 color = if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
                 shape = CircleShape,
@@ -442,6 +494,176 @@ private fun SubdomainStep(
             onClick = onClick,
             modifier = Modifier.fillMaxWidth(fraction = 0.6f),
         )
+    }
+}
+
+@Composable
+private fun ModalidadeStep(
+    selected: Set<Modalidade>,
+    onToggle: (Modalidade) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(TotemTheme.dimens.space16)) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(TotemTheme.dimens.space20),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            ModalidadeCard(
+                icon = Icons.Filled.DirectionsBoat,
+                title = stringRes(R.string.setup_modalidade_hidro),
+                description = stringRes(R.string.setup_modalidade_hidro_desc),
+                selected = Modalidade.Hidroviario in selected,
+                onClick = { onToggle(Modalidade.Hidroviario) },
+                modifier = Modifier.weight(1f),
+            )
+            ModalidadeCard(
+                icon = Icons.Filled.DirectionsBus,
+                title = stringRes(R.string.setup_modalidade_rodo),
+                description = stringRes(R.string.setup_modalidade_rodo_desc),
+                selected = Modalidade.Rodoviario in selected,
+                onClick = { onToggle(Modalidade.Rodoviario) },
+                modifier = Modifier.weight(1f),
+            )
+        }
+        if (selected.isEmpty()) {
+            Text(
+                text = stringRes(R.string.setup_modalidade_min),
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.error,
+            )
+        }
+    }
+}
+
+@Composable
+private fun ModalidadeCard(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    title: String,
+    description: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    TotemCard(modifier = modifier, selected = selected, onClick = onClick) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(TotemTheme.dimens.space24),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(TotemTheme.dimens.space16),
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(48.dp),
+            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                )
+                Text(
+                    text = description,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Icon(
+                imageVector = if (selected) Icons.Filled.CheckCircle else Icons.Outlined.Circle,
+                contentDescription = null,
+                tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
+            )
+        }
+    }
+}
+
+@Composable
+private fun TerminalStep(
+    query: String,
+    terminais: TerminaisState,
+    selected: LocalOnibus?,
+    searchFocused: Boolean,
+    onSearchClick: () -> Unit,
+    onClearSearch: () -> Unit,
+    onSelected: (LocalOnibus) -> Unit,
+    onRetry: () -> Unit,
+) {
+    val todosFmt = stringRes(R.string.setup_terminal_all)
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(TotemTheme.dimens.space16),
+    ) {
+        if (selected != null) {
+            Text(
+                text = stringRes(R.string.setup_terminal_selected) + ": " + selected.nome,
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.primary,
+            )
+        }
+        TotemInputField(
+            label = stringRes(R.string.setup_terminal_search_hint),
+            value = query,
+            placeholder = stringRes(R.string.setup_tap_to_type),
+            focused = searchFocused,
+            onClick = onSearchClick,
+            modifier = Modifier.fillMaxWidth(),
+            trailing = if (query.isNotEmpty()) ({
+                IconButton(onClick = onClearSearch) {
+                    Icon(
+                        imageVector = Icons.Filled.Close,
+                        contentDescription = stringRes(R.string.setup_porto_clear_search),
+                    )
+                }
+            }) else ({
+                Icon(imageVector = Icons.Filled.Search, contentDescription = null)
+            }),
+        )
+        when (terminais) {
+            TerminaisState.Idle -> Text(
+                text = stringRes(R.string.setup_terminal_min_chars),
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            TerminaisState.Loading -> TotemLoading(label = stringRes(R.string.setup_terminal_loading))
+            is TerminaisState.Error -> TotemErrorState(
+                title = stringRes(R.string.setup_terminal_error_title),
+                message = stringRes(R.string.setup_no_portos_message),
+                actionLabel = stringRes(R.string.setup_retry),
+                onAction = onRetry,
+            )
+            is TerminaisState.Loaded -> {
+                val opcoes = terminais.terminais.toOpcoes { cidade, uf -> todosFmt.format(cidade, uf) }
+                if (opcoes.isEmpty()) {
+                    Text(
+                        text = stringRes(R.string.setup_terminal_empty),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                } else {
+                    LazyVerticalGrid(
+                        columns = GridCells.Adaptive(minSize = 300.dp),
+                        horizontalArrangement = Arrangement.spacedBy(TotemTheme.dimens.space16),
+                        verticalArrangement = Arrangement.spacedBy(TotemTheme.dimens.space16),
+                        modifier = Modifier.fillMaxSize(),
+                    ) {
+                        items(opcoes, key = { it.slug }) { opcao ->
+                            TotemCard(
+                                selected = selected?.slug == opcao.slug,
+                                onClick = { onSelected(opcao) },
+                            ) {
+                                Text(
+                                    text = opcao.nome,
+                                    style = MaterialTheme.typography.titleLarge,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    modifier = Modifier.padding(TotemTheme.dimens.space20),
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -782,6 +1004,8 @@ private fun SetupKeypadSlot(
             stringRes(R.string.setup_porto_search_hint) to state.portoSearchQuery
         SetupKeypadField.EmbarcacaoSearch ->
             stringRes(R.string.setup_embarcacao_search_hint) to state.embarcacaoSearchQuery
+        SetupKeypadField.TerminalSearch ->
+            stringRes(R.string.setup_terminal_search_hint) to state.terminalQuery
         SetupKeypadField.Pin -> return
     }
     TotemAlphaKeypad(
@@ -823,6 +1047,12 @@ private fun SetupWizardPreview() {
                 selectedPorto = Porto(1, "porto-salvador", "Porto de Salvador", "29270", "Salvador"),
             ),
             onAdvanceFromSubdomain = {},
+            onModalidadeToggled = {},
+            onAdvanceFromModalidade = {},
+            onTerminalSelected = {},
+            onTerminalQueryClear = {},
+            onRetryTerminais = {},
+            onAdvanceFromTerminal = {},
             onRetryPortos = {},
             onPortoSearchChange = {},
             onPortoSelected = {},

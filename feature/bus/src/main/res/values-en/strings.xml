@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Common -->
+    <string name="bus_back">Back</string>
+    <string name="bus_continue">Continue</string>
+    <string name="bus_retry">Try again</string>
+    <string name="bus_finish">Finish</string>
+    <string name="bus_change">Change</string>
+    <string name="bus_tap_to_type">Tap to type</string>
+    <string name="bus_generic_error_message">Please try again in a moment.</string>
+    <string name="bus_keypad_done">Done</string>
+    <string name="bus_keypad_next">Next</string>
+    <string name="bus_keypad_close">Close keyboard</string>
+    <string name="bus_keypad_delete">Delete</string>
+    <string name="bus_keypad_space">Space</string>
+    <string name="bus_keypad_shift">Shift</string>
+    <string name="bus_calendar_prev">Previous month</string>
+    <string name="bus_calendar_next">Next month</string>
+
+    <!-- Mode choice -->
+    <string name="bus_choice_title">How do you want to travel?</string>
+    <string name="bus_choice_subtitle">Tap the option you want.</string>
+    <string name="bus_choice_boat">Boat</string>
+    <string name="bus_choice_boat_desc">Speedboats, ferries and regional boats</string>
+    <string name="bus_choice_bus">Bus</string>
+    <string name="bus_choice_bus_desc">Road trips all over Brazil</string>
+
+    <!-- Search -->
+    <string name="bus_search_title">Where are you going?</string>
+    <string name="bus_dates_title">When are you traveling?</string>
+    <string name="bus_search_from">Departing from %1$s</string>
+    <string name="bus_search_destination_label">Destination</string>
+    <string name="bus_search_destination_hint">Type the destination city</string>
+    <string name="bus_search_min_chars">Type at least 3 letters of the destination city.</string>
+    <string name="bus_search_loading">Searching destinations…</string>
+    <string name="bus_search_empty">No destination found. Check the city name.</string>
+    <string name="bus_search_error_title">Could not search destinations</string>
+    <string name="bus_terminal_all">All terminals in %1$s - %2$s</string>
+    <string name="bus_one_way">One way</string>
+    <string name="bus_round_trip">Round trip</string>
+    <string name="bus_departure_date">Departure date</string>
+    <string name="bus_return_date">Return date</string>
+    <string name="bus_pick_date">Pick a date on the calendar</string>
+    <string name="bus_search_action">Search trips</string>
+
+    <!-- Trips -->
+    <string name="bus_trips_title_ida">Choose your outbound trip</string>
+    <string name="bus_trips_title_volta">Choose your return trip</string>
+    <string name="bus_trips_loading">Searching trips…</string>
+    <string name="bus_trips_error_title">Could not search trips</string>
+    <string name="bus_trips_empty_title">No trips on this date</string>
+    <string name="bus_trips_empty_message">Try the previous or the next day.</string>
+    <string name="bus_prev_day">Previous day</string>
+    <string name="bus_next_day">Next day</string>
+    <string name="bus_connection">With connection</string>
+    <string name="bus_seats_left">%1$d seats left</string>
+    <string name="bus_label_departure">Departure</string>
+    <string name="bus_label_arrival">Arrival</string>
+    <string name="bus_label_duration">Duration</string>
+    <string name="bus_from_price">From</string>
+
+    <!-- Seats -->
+    <string name="bus_seats_title_ida">Choose your seats (outbound)</string>
+    <string name="bus_seats_title_volta">Choose your seats (return)</string>
+    <string name="bus_seats_loading">Loading the seat map…</string>
+    <string name="bus_seats_error_title">Could not load the seats</string>
+    <string name="bus_seats_empty">This bus has no seats available.</string>
+    <string name="bus_leg_of">Connection leg %1$d of %2$d</string>
+    <string name="bus_driver">Front of the bus</string>
+    <string name="bus_seat_free">Available</string>
+    <string name="bus_seat_selected">Your choice</string>
+    <string name="bus_seat_taken">Taken</string>
+    <string name="bus_seats_summary_title">Selected seats</string>
+    <string name="bus_seats_pick_free">Tap available seats — one per passenger (up to %1$d).</string>
+    <string name="bus_seats_pick_exact">Choose %1$d seat(s), one for each passenger.</string>
+    <string name="bus_seat_number">Seat %1$s</string>
+    <string name="bus_seats_lock_error">One of the seats was just taken. Please choose another one.</string>
+    <string name="bus_seats_locking">Reserving…</string>
+    <string name="bus_seats_next_leg">Next leg</string>
+    <string name="bus_subtotal">Subtotal</string>
+
+    <!-- Passengers -->
+    <string name="bus_passenger_title">Passenger %1$d of %2$d</string>
+    <string name="bus_passenger_seat">Seat %1$s</string>
+    <string name="bus_doc_cpf">CPF</string>
+    <string name="bus_doc_rg">ID (RG)</string>
+    <string name="bus_doc_passport">Passport</string>
+    <string name="bus_doc_cnh">Driver license</string>
+    <string name="bus_passenger_name">Full name</string>
+    <string name="bus_passenger_birth">Date of birth</string>
+    <string name="bus_passenger_phone">Phone (optional)</string>
+    <string name="bus_passenger_phone_required">Phone</string>
+    <string name="bus_passenger_email">E-mail</string>
+    <string name="bus_passenger_lookup">Searching…</string>
+    <string name="bus_passenger_contact_hint">The ticket will also be sent to this e-mail and phone.</string>
+    <string name="bus_passenger_minor_warning">Passengers under 16 must travel accompanied or with authorization. Check the rules before boarding.</string>
+    <string name="bus_next_passenger">Next passenger</string>
+    <string name="bus_go_to_payment">Go to payment</string>
+    <string name="bus_error_required">Required field</string>
+    <string name="bus_error_cpf">Invalid CPF</string>
+    <string name="bus_error_document">Invalid document</string>
+    <string name="bus_error_name">Enter first and last name, letters only</string>
+    <string name="bus_error_date">Invalid date</string>
+    <string name="bus_error_phone">Invalid phone (include area code)</string>
+    <string name="bus_error_email">Invalid e-mail</string>
+
+    <!-- Payment -->
+    <string name="bus_payment_title">Payment</string>
+    <string name="bus_payment_subtitle">Pay with Pix using your bank app.</string>
+    <string name="bus_summary_title">Order summary</string>
+    <string name="bus_outbound">Outbound</string>
+    <string name="bus_return">Return</string>
+    <string name="bus_seats_list">Seats %1$s</string>
+    <string name="bus_passengers_count">%1$d passenger(s)</string>
+    <string name="bus_total">Total</string>
+    <string name="bus_fee_included">Convenience fee included</string>
+    <string name="bus_creating_order">Preparing your order…</string>
+    <string name="bus_generating_pix">Generating the Pix QR Code…</string>
+    <string name="bus_pix_scan">Scan the QR Code with your bank app</string>
+    <string name="bus_pix_qr_desc">Pix QR Code</string>
+    <string name="bus_pix_expires_in">Expires in %1$s</string>
+    <string name="bus_pix_waiting">As soon as the payment is confirmed, your ticket will be printed automatically.</string>
+    <string name="bus_pix_expired_title">The QR Code expired</string>
+    <string name="bus_pix_expired_message">Generate a new QR Code to complete the payment.</string>
+    <string name="bus_pix_new_qr">Generate new QR Code</string>
+    <string name="bus_payment_confirmed">Payment confirmed!</string>
+    <string name="bus_payment_error_title">Could not create the payment</string>
+    <string name="bus_payment_error_message">Please try again. If the problem continues, ask for assistance.</string>
+    <string name="bus_seat_lost_title">A seat is no longer available</string>
+    <string name="bus_seat_lost_message">Someone else got one of the seats before payment. Please choose again.</string>
+    <string name="bus_choose_seats_again">Choose again</string>
+    <string name="bus_payer_cpf">Payer CPF</string>
+    <string name="bus_payer_cpf_title">Enter the CPF of the person paying</string>
+    <string name="bus_payer_cpf_message">Pix requires the payer CPF.</string>
+    <string name="bus_generate_pix">Generate Pix</string>
+
+    <!-- Printing -->
+    <string name="bus_print_title">Your ticket</string>
+    <string name="bus_print_issuing">Issuing your ticket…</string>
+    <string name="bus_print_printing">Printing…</string>
+    <string name="bus_print_done_title">Ticket printed!</string>
+    <string name="bus_print_done_message">Take your ticket from the printer. It was also sent to the e-mail and phone provided. Have a nice trip!</string>
+    <string name="bus_print_finish">Finish (%1$d)</string>
+    <string name="bus_print_failed_title">Could not print</string>
+    <string name="bus_print_failed_hint">Do not worry: the ticket was also sent to the e-mail and phone provided.</string>
+    <string name="bus_seats_title">Choose your seats</string>
+    <string name="bus_seats_selected_summary">Seats %1$s · %2$s</string>
+    <string name="bus_passenger_screen_title">Who is traveling?</string>
+    <string name="bus_passenger_screen_subtitle">Tap each seat to fill in the passenger details.</string>
+    <string name="bus_passenger_advance">Continue</string>
+    <string name="bus_role_titular">Main · Passenger</string>
+    <string name="bus_role_passenger">Passenger</string>
+    <string name="bus_edit">Edit</string>
+    <string name="bus_fill_data">Fill in details</string>
+    <string name="bus_birth_placeholder">dd/mm/yyyy</string>
+    <string name="bus_doc_type">Document type</string>
+    <string name="bus_doc_modal_subtitle">We look up your details automatically.</string>
+    <string name="bus_doc_searching">Looking up your details…</string>
+    <string name="bus_modal_finish">Finish</string>
+    <string name="bus_person">passenger %1$d</string>
+    <string name="bus_modal_doc_of">Enter the document of %1$s</string>
+    <string name="bus_modal_name_of">Enter the name of %1$s</string>
+    <string name="bus_modal_phone_of">Enter the mobile number of %1$s</string>
+    <string name="bus_modal_birth_of">Enter the date of birth of %1$s</string>
+    <string name="bus_modal_email_of">Enter the e-mail of %1$s</string>
+</resources>

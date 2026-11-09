@@ -28,7 +28,12 @@ class TotemAppChromeViewModel @Inject constructor(
         .map { config ->
             TotemAppChromeState(
                 // Sem porto (totem a bordo): mostra o nome da embarcação no lugar do porto.
-                portoNome = config.portoNome.ifEmpty { config.embarcacaoNome },
+                // Totem só rodoviário: mostra o terminal de origem.
+                portoNome = if (config.vendeHidroviario) {
+                    config.portoNome.ifEmpty { config.embarcacaoNome }
+                } else {
+                    config.terminalNome
+                },
                 language = config.defaultLanguage,
             )
         }

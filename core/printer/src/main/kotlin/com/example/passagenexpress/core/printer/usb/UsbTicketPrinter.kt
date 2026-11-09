@@ -77,6 +77,22 @@ internal class UsbTicketPrinter @Inject constructor(
         return send(EscPosTicketBuilder.build(bilhete, logoRaster = logo, paper = paper))
     }
 
+    override suspend fun printPdf(pdf: ByteArray): AppResult<Unit> {
+        val paper = if (isDebuggable && resolveDevice() == null) {
+            PaperWidth.MM58
+        } else {
+            totemConfigRepository.config.first().printerPaperWidth
+        }
+        val bytes = withContext(Dispatchers.IO) {
+            runCatching { PdfTicketRenderer.render(context, pdf, paper.dots) }
+        }.getOrElse { e ->
+            Log.e(TAG, "Falha ao renderizar PDF para impressão", e)
+            return AppResult.Failure(AppError.Unknown(message = "Não foi possível ler o bilhete", cause = e))
+        }
+        if (isDebuggable && resolveDevice() == null) return dumpToFile(bytes, "pdf")
+        return send(bytes)
+    }
+
     override suspend fun testPrint(): AppResult<Unit> {
         if (isDebuggable && resolveDevice() == null) {
             return dumpToFile(EscPosTicketBuilder.buildTest(PaperWidth.MM58), "teste")

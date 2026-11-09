@@ -2,6 +2,8 @@ package com.example.passagenexpress.core.data.di
 
 import com.example.passagenexpress.core.data.repository.ComodoRepositoryImpl
 import com.example.passagenexpress.core.data.repository.EmpresaRepositoryImpl
+import com.example.passagenexpress.core.data.repository.OnibusRepositoryImpl
+import com.example.passagenexpress.core.domain.repository.OnibusRepository
 import com.example.passagenexpress.core.data.repository.PagamentoRepositoryImpl
 import com.example.passagenexpress.core.data.repository.PedidoRepositoryImpl
 import com.example.passagenexpress.core.data.repository.PointTapRepositoryImpl
@@ -45,4 +47,8 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindEmpresaRepository(impl: EmpresaRepositoryImpl): EmpresaRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindOnibusRepository(impl: OnibusRepositoryImpl): OnibusRepository
 }

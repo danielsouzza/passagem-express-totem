@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.example.passagenexpress.core.domain.model.AppLanguage
+import com.example.passagenexpress.core.domain.model.Modalidade
 import com.example.passagenexpress.core.domain.model.PaperWidth
 import com.example.passagenexpress.core.domain.model.Porto
 import com.example.passagenexpress.core.domain.model.TotemConfig
@@ -45,6 +46,15 @@ class TotemConfigDataStore @Inject constructor(
             isSuper = prefs[Keys.IsSuper] ?: false,
             agente = prefs[Keys.Agente].orEmpty(),
             origemQr = prefs[Keys.OrigemQr].orEmpty(),
+            // Ausente (totens anteriores ao ônibus) = só hidroviário.
+            modalidades = prefs[Keys.Modalidades]
+                ?.split(',')
+                ?.mapNotNull { Modalidade.fromKey(it.trim()) }
+                ?.toSet()
+                ?.takeIf { it.isNotEmpty() }
+                ?: setOf(Modalidade.Hidroviario),
+            terminalSlug = prefs[Keys.TerminalSlug].orEmpty(),
+            terminalNome = prefs[Keys.TerminalNome].orEmpty(),
         )
     }
 
@@ -114,6 +124,23 @@ class TotemConfigDataStore @Inject constructor(
         }
     }
 
+    override suspend fun setModalidades(modalidades: Set<Modalidade>) {
+        if (modalidades.isEmpty()) return // nunca deixa o totem sem modalidade
+        dataStore.edit { it[Keys.Modalidades] = modalidades.joinToString(",") { m -> m.key } }
+    }
+
+    override suspend fun setTerminal(slug: String, nome: String) {
+        dataStore.edit {
+            if (slug.isBlank()) {
+                it.remove(Keys.TerminalSlug)
+                it.remove(Keys.TerminalNome)
+            } else {
+                it[Keys.TerminalSlug] = slug
+                it[Keys.TerminalNome] = nome
+            }
+        }
+    }
+
     override suspend fun completeSetup() {
         dataStore.edit { it[Keys.SetupComplete] = true }
     }
@@ -140,5 +167,8 @@ class TotemConfigDataStore @Inject constructor(
         val IsSuper = booleanPreferencesKey("totem_is_super")
         val Agente = stringPreferencesKey("totem_agente")
         val OrigemQr = stringPreferencesKey("totem_origem_qr")
+        val Modalidades = stringPreferencesKey("totem_modalidades")
+        val TerminalSlug = stringPreferencesKey("totem_terminal_slug")
+        val TerminalNome = stringPreferencesKey("totem_terminal_nome")
     }
 }

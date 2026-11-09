@@ -97,6 +97,7 @@ dependencies {
     implementation(project(":feature:payment"))
     implementation(project(":feature:print"))
     implementation(project(":feature:settings"))
+    implementation(project(":feature:bus"))
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)

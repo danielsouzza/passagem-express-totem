@@ -6,8 +6,11 @@ name: Android Develop
 #   - marcada como pré-release, então NÃO vira a "latest" — o link fixo
 #     /releases/latest/download/passagenexpress-latest.apk continua apontando pra build da main.
 #
+#   - API apontando pro ambiente developer (https://app.developer.techrios.online/).
+#
 # Usa os mesmos segredos do workflow da main (Settings → Secrets and variables → Actions):
 #   RELEASE_KEYSTORE_BASE64, RELEASE_KEYSTORE_PASSWORD, RELEASE_KEY_ALIAS, PASSAGENEXPRESS_API_TOKEN
+# Opcional: PASSAGENEXPRESS_API_TOKEN_DEVELOP, se o ambiente developer tiver X-API-KEY própria.
 on:
   push:
     branches: [develop]
@@ -54,12 +57,17 @@ jobs:
           echo "tag=develop-build-$BUILD" >> "$GITHUB_OUTPUT"
           echo "arquivo=passagenexpress-develop-$BUILD.apk" >> "$GITHUB_OUTPUT"
 
+      # Aponta pro ambiente developer (a main usa o padrão do build.gradle, homologação).
+      # Token: usa PASSAGENEXPRESS_API_TOKEN_DEVELOP se existir; senão o mesmo da main.
       - name: Build do APK
         env:
-          API_TOKEN: ${{ secrets.PASSAGENEXPRESS_API_TOKEN }}
+          API_TOKEN: ${{ secrets.PASSAGENEXPRESS_API_TOKEN_DEVELOP || secrets.PASSAGENEXPRESS_API_TOKEN }}
+          API_BASE_URL: https://app.developer.techrios.online/
         run: |
           chmod +x ./gradlew
-          ./gradlew :app:assembleRelease -Ppassagenexpress.apiToken="$API_TOKEN"
+          ./gradlew :app:assembleRelease \
+            -Ppassagenexpress.apiToken="$API_TOKEN" \
+            -Ppassagenexpress.apiBaseUrl="$API_BASE_URL"
           cp app/build/outputs/apk/release/app-release.apk "${{ steps.versao.outputs.arquivo }}"
 
       - name: Publicar pré-release
@@ -71,7 +79,8 @@ jobs:
           prerelease: true
           make_latest: false
           body: |
-            Build de desenvolvimento (branch develop) — não usar em totem de produção.
+            Build de desenvolvimento (branch develop), API https://app.developer.techrios.online/
+            — não usar em totem de produção.
 
             Commit: ${{ github.sha }}
           files: ${{ steps.versao.outputs.arquivo }}

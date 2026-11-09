@@ -19,12 +19,13 @@ android {
 
         // HTTPS direto — o servidor responde 301 quando bate em HTTP, e o follow
         // do OkHttp convertia POST→GET, descartando o body. Cortando a etapa pra evitar.
+        // URL da API: padrão homologação. Sobrescreva com -Ppassagenexpress.apiBaseUrl=... (o CI da
+        // develop aponta pra https://app.developer.techrios.online/; ver android-develop.yml)
+        // ou em ~/.gradle/gradle.properties pra dev local (ex.: http://techrios.localhost/).
         buildConfigField(
             "String",
             "API_BASE_URL",
-//            "\"http://techrios.localhost/\""
-//            "\"http://172.30.237.224/\""
-            "\"https://app.homologacao.techrios.online/\""
+            "\"${providers.gradleProperty("passagenexpress.apiBaseUrl").orElse("https://app.homologacao.techrios.online/").get()}\""
         )
         buildConfigField(
             "String",

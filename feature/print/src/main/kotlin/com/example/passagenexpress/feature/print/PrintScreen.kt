@@ -48,7 +48,6 @@ fun PrintScreen(
             is PrintUiState.Done -> DoneContent(onFinished = onFinished)
 
             is PrintUiState.Failed -> FailedContent(
-                message = s.message,
                 onRetry = viewModel::onRetry,
                 onFinish = onFinished,
             )
@@ -96,7 +95,6 @@ private fun DoneContent(onFinished: () -> Unit) {
 
 @Composable
 private fun FailedContent(
-    message: String,
     onRetry: () -> Unit,
     onFinish: () -> Unit,
 ) {
@@ -107,12 +105,7 @@ private fun FailedContent(
             color = MaterialTheme.colorScheme.error,
             textAlign = TextAlign.Center,
         )
-        Text(
-            text = message,
-            style = MaterialTheme.typography.bodyLarge,
-            color = TotemPalette.InkMuted,
-            textAlign = TextAlign.Center,
-        )
+        // Detalhe técnico (`message`) não aparece pro cliente — vai só pro logcat (PrintViewModel).
         Text(
             text = stringResource(R.string.print_failed_hint),
             style = MaterialTheme.typography.bodyLarge,

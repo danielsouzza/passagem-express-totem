@@ -43,6 +43,8 @@ class TotemConfigDataStore @Inject constructor(
             embarcacaoId = prefs[Keys.EmbarcacaoId],
             embarcacaoNome = prefs[Keys.EmbarcacaoNome].orEmpty(),
             isSuper = prefs[Keys.IsSuper] ?: false,
+            agente = prefs[Keys.Agente].orEmpty(),
+            origemQr = prefs[Keys.OrigemQr].orEmpty(),
         )
     }
 
@@ -105,6 +107,13 @@ class TotemConfigDataStore @Inject constructor(
         dataStore.edit { it[Keys.OperatorPin] = pin }
     }
 
+    override suspend fun setOrigemVenda(agente: String, qr: String) {
+        dataStore.edit {
+            agente.trim().ifEmpty { null }?.let { v -> it[Keys.Agente] = v } ?: it.remove(Keys.Agente)
+            qr.trim().ifEmpty { null }?.let { v -> it[Keys.OrigemQr] = v } ?: it.remove(Keys.OrigemQr)
+        }
+    }
+
     override suspend fun completeSetup() {
         dataStore.edit { it[Keys.SetupComplete] = true }
     }
@@ -129,5 +138,7 @@ class TotemConfigDataStore @Inject constructor(
         val EmbarcacaoId = longPreferencesKey("totem_embarcacao_id")
         val EmbarcacaoNome = stringPreferencesKey("totem_embarcacao_nome")
         val IsSuper = booleanPreferencesKey("totem_is_super")
+        val Agente = stringPreferencesKey("totem_agente")
+        val OrigemQr = stringPreferencesKey("totem_origem_qr")
     }
 }

@@ -24,26 +24,19 @@ class ViagemRepositoryImpl @Inject constructor(
     private val api: ViagemApi,
 ) : ViagemRepository {
 
-    // Portos e destinos são estáticos durante a sessão do totem. City e Trip pedem os mesmos
-    // destinos (mesma GET /api/filtros), então cacheamos em memória os resultados bem-sucedidos
-    // pra evitar rebusca a cada navegação. Só viagens (trechos) variam por data → nunca cacheadas.
-    @Volatile
-    private var portosCache: List<Porto>? = null
-    @Volatile
-    private var embarcacoesCache: List<Embarcacao>? = null
+    // Portos e embarcações NÃO são cacheados: só são pedidos no setup e nas configurações (raro),
+    // e o cache fazia o "Tentar novamente" devolver a mesma resposta sem bater no backend.
+    //
+    // Destinos sim: City e Trip pedem os mesmos (GET /api/filtros) a cada navegação do cliente.
+    // Lista vazia não entra no cache, pra não "congelar" um vazio. Viagens (trechos) variam por
+    // data → nunca cacheadas.
     private val destinosCache = ConcurrentHashMap<String, List<Municipio>>()
 
-    override suspend fun buscarPortos(): AppResult<List<Porto>> {
-        portosCache?.let { return AppResult.Success(it) }
-        return callEnvelope({ api.getPortos() }) { dtos -> dtos.map { it.toDomain() } }
-            .also { if (it is AppResult.Success) portosCache = it.value }
-    }
+    override suspend fun buscarPortos(): AppResult<List<Porto>> =
+        callEnvelope({ api.getPortos() }) { dtos -> dtos.map { it.toDomain() } }
 
-    override suspend fun buscarEmbarcacoes(): AppResult<List<Embarcacao>> {
-        embarcacoesCache?.let { return AppResult.Success(it) }
-        return callEnvelope({ api.getEmbarcacoes() }) { dtos -> dtos.map { it.toDomain() } }
-            .also { if (it is AppResult.Success) embarcacoesCache = it.value }
-    }
+    override suspend fun buscarEmbarcacoes(): AppResult<List<Embarcacao>> =
+        callEnvelope({ api.getEmbarcacoes() }) { dtos -> dtos.map { it.toDomain() } }
 
     override suspend fun buscarMunicipiosOrigem(portoSlug: String?): AppResult<List<Municipio>> =
         callEnvelope({ api.getFiltros(portoSlug = portoSlug) }) { wrapper ->
@@ -60,7 +53,7 @@ class ViagemRepositoryImpl @Inject constructor(
             api.getFiltros(portoSlug = portoSlug, municipioOrigemCodigo = municipioOrigemCodigo)
         }) { wrapper ->
             wrapper.municipiosDestino.map { it.toDomain() }
-        }.also { if (it is AppResult.Success) destinosCache[cacheKey] = it.value }
+        }.also { if (it is AppResult.Success && it.value.isNotEmpty()) destinosCache[cacheKey] = it.value }
     }
 
     override suspend fun buscarViagens(filtros: BuscaViagensFiltros): AppResult<ResultadoBuscaViagens> {

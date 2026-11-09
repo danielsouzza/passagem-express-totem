@@ -1,5 +1,6 @@
 package com.example.passagenexpress.feature.print
 
+import android.util.Log
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -56,7 +57,7 @@ class PrintViewModel @Inject constructor(
                     passagens = r.value
                     nextIndex = 0
                     if (passagens.isEmpty()) {
-                        _uiState.value = PrintUiState.Failed(
+                        _uiState.value = failed(
                             message = "Nenhuma passagem encontrada para impressão.",
                             current = 0,
                             total = 0,
@@ -65,7 +66,7 @@ class PrintViewModel @Inject constructor(
                         printFrom(0)
                     }
                 }
-                is AppResult.Failure -> _uiState.value = PrintUiState.Failed(
+                is AppResult.Failure -> _uiState.value = failed(
                     message = r.error.message ?: "Erro ao obter as passagens.",
                     current = 0,
                     total = 0,
@@ -86,7 +87,7 @@ class PrintViewModel @Inject constructor(
                 val bilhete = when (val r = obterBilheteMapeado(passagem.id)) {
                     is AppResult.Success -> r.value
                     is AppResult.Failure -> {
-                        _uiState.value = PrintUiState.Failed(
+                        _uiState.value = failed(
                             message = r.error.message ?: "Erro ao obter o bilhete.",
                             current = index + 1,
                             total = total,
@@ -98,7 +99,7 @@ class PrintViewModel @Inject constructor(
                 when (val r = imprimirBilhete(bilhete)) {
                     is AppResult.Success -> Unit
                     is AppResult.Failure -> {
-                        _uiState.value = PrintUiState.Failed(
+                        _uiState.value = failed(
                             message = r.error.message ?: "Erro ao imprimir o bilhete.",
                             current = index + 1,
                             total = total,
@@ -112,7 +113,14 @@ class PrintViewModel @Inject constructor(
         }
     }
 
+    /** Falha de impressão: a tela não mostra o detalhe técnico ao cliente, então loga aqui. */
+    private fun failed(message: String, current: Int, total: Int): PrintUiState.Failed {
+        Log.w(TAG, "Falha na impressão (pedido=$pedidoId, $current/$total): $message")
+        return PrintUiState.Failed(message = message, current = current, total = total)
+    }
+
     companion object {
+        private const val TAG = "PrintViewModel"
         const val ARG_PEDIDO_ID = "pedidoId"
     }
 }

@@ -6,6 +6,8 @@ import com.example.passagenexpress.core.domain.model.PassagemPedido
 import com.example.passagenexpress.core.domain.model.Pedido
 import com.example.passagenexpress.core.domain.model.PedidoStatus
 import com.example.passagenexpress.core.domain.repository.NovoPedido
+import kotlinx.serialization.EncodeDefault
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import java.time.LocalDateTime
@@ -76,6 +78,7 @@ fun parsePedidoStatus(raw: String?): PedidoStatus = when (raw?.lowercase()) {
     else -> PedidoStatus.Aberto
 }
 
+@OptIn(ExperimentalSerializationApi::class)
 @Serializable
 data class CriarPedidoRequestDto(
     @SerialName("pedido_id") val pedidoId: Long? = null,
@@ -88,6 +91,11 @@ data class CriarPedidoRequestDto(
     val origem: Int = 3,
     val contato: ContatoRequestDto,
     val dataComodos: List<DataComodoRequestDto>,
+    // Origem da venda (Agência Express). Nulos são OMITIDOS do body — igual ao site, onde
+    // `undefined` some no JSON.stringify — pra não mandar `"agente": null` a backends que
+    // ainda não conhecem o campo.
+    @EncodeDefault(EncodeDefault.Mode.NEVER) val agente: String? = null,
+    @EncodeDefault(EncodeDefault.Mode.NEVER) val qr: String? = null,
 )
 
 @Serializable
@@ -120,7 +128,9 @@ data class DataComodoRequestDto(
     val isContact: Boolean = false,
 )
 
-fun NovoPedido.toDto(): CriarPedidoRequestDto = CriarPedidoRequestDto(
+fun NovoPedido.toDto(agente: String? = null, qr: String? = null): CriarPedidoRequestDto = CriarPedidoRequestDto(
+    agente = agente,
+    qr = qr,
     pedidoId = pedidoId,
     trecho = trechoId,
     viagem = viagemId,

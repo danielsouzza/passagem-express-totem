@@ -67,6 +67,8 @@ fun SettingsScreen(
         onEditSubdomain = viewModel::onEditSubdomain,
         onEditPorto = viewModel::onEditPorto,
         onEditEmbarcacao = viewModel::onEditEmbarcacao,
+        onEditOrigemVenda = viewModel::onEditOrigemVenda,
+        onSaveOrigemVenda = viewModel::onSaveOrigemVenda,
         onEditPrinter = viewModel::onEditPrinter,
         onEditLanguage = viewModel::onEditLanguage,
         onEditPin = viewModel::onEditPin,
@@ -109,6 +111,8 @@ private fun SettingsContent(
     onEditSubdomain: () -> Unit,
     onEditPorto: () -> Unit,
     onEditEmbarcacao: () -> Unit,
+    onEditOrigemVenda: () -> Unit,
+    onSaveOrigemVenda: () -> Unit,
     onEditPrinter: () -> Unit,
     onEditLanguage: () -> Unit,
     onEditPin: () -> Unit,
@@ -153,6 +157,7 @@ private fun SettingsContent(
             onEditSubdomain = onEditSubdomain,
             onEditPorto = onEditPorto,
             onEditEmbarcacao = onEditEmbarcacao,
+            onEditOrigemVenda = onEditOrigemVenda,
             onEditPrinter = onEditPrinter,
             onEditLanguage = onEditLanguage,
             onEditPin = onEditPin,
@@ -182,6 +187,7 @@ private fun SettingsContent(
             onSaveSubdomain = onSaveSubdomain,
             onSavePorto = onSavePorto,
             onSaveEmbarcacao = onSaveEmbarcacao,
+            onSaveOrigemVenda = onSaveOrigemVenda,
             onSavePrinter = onSavePrinter,
             onSaveLanguage = onSaveLanguage,
             onSavePin = onSavePin,
@@ -245,6 +251,7 @@ private fun SettingsHub(
     onEditSubdomain: () -> Unit,
     onEditPorto: () -> Unit,
     onEditEmbarcacao: () -> Unit,
+    onEditOrigemVenda: () -> Unit,
     onEditPrinter: () -> Unit,
     onEditLanguage: () -> Unit,
     onEditPin: () -> Unit,
@@ -284,6 +291,14 @@ private fun SettingsHub(
                 label = stringResource(R.string.settings_section_embarcacao),
                 value = state.currentEmbarcacaoNome.ifEmpty { stringResource(R.string.settings_embarcacao_none) },
                 onClick = onEditEmbarcacao,
+            )
+            SettingRow(
+                label = stringResource(R.string.settings_section_origem_venda),
+                value = state.currentOrigemQr.ifEmpty { stringResource(R.string.settings_value_empty) } +
+                    state.currentAgente.takeIf { it.isNotEmpty() }
+                        ?.let { " · " + stringResource(R.string.settings_origem_agente_short, it) }
+                        .orEmpty(),
+                onClick = onEditOrigemVenda,
             )
             SettingRow(
                 label = stringResource(R.string.settings_section_printer),
@@ -371,6 +386,7 @@ private fun SettingsEditor(
     onSaveSubdomain: () -> Unit,
     onSavePorto: () -> Unit,
     onSaveEmbarcacao: () -> Unit,
+    onSaveOrigemVenda: () -> Unit,
     onSavePrinter: () -> Unit,
     onSaveLanguage: () -> Unit,
     onSavePin: () -> Unit,
@@ -380,6 +396,8 @@ private fun SettingsEditor(
         SettingsField.Subdomain -> onSaveSubdomain to true
         SettingsField.Porto -> onSavePorto to state.canSavePorto
         SettingsField.Embarcacao -> onSaveEmbarcacao to state.canSaveEmbarcacao
+        // Ambos opcionais: salvar vazio = totem não envia agente/qr.
+        SettingsField.OrigemVenda -> onSaveOrigemVenda to true
         SettingsField.Printer -> onSavePrinter to state.canSavePrinter
         SettingsField.Language -> onSaveLanguage to true
         SettingsField.Pin -> onSavePin to state.canSavePin
@@ -455,6 +473,12 @@ private fun SettingsEditor(
                     onEmbarcacaoCleared = onEmbarcacaoCleared,
                     onRetry = onRetryEmbarcacoes,
                 )
+                SettingsField.OrigemVenda -> OrigemVendaEditor(
+                    origemQr = state.origemQrInput,
+                    agente = state.agenteInput,
+                    focusedField = state.keypadField,
+                    onOpenKeypad = onOpenKeypad,
+                )
                 SettingsField.Pin -> PinEditor(
                     pinLength = state.pinDraft.length,
                     onDigit = onPinDraftDigit,
@@ -493,6 +517,40 @@ private fun PinEditor(
                 deleteContentDesc = stringResource(R.string.settings_keypad_delete),
             )
         }
+    }
+}
+
+/**
+ * Origem da venda — no site vem do QR impresso (`?qr=..&agente=..`); no totem é fixo por aparelho.
+ * Os dois vão no corpo de todo pedido criado por este totem.
+ */
+@Composable
+private fun OrigemVendaEditor(
+    origemQr: String,
+    agente: String,
+    focusedField: SettingsKeypadField?,
+    onOpenKeypad: (SettingsKeypadField) -> Unit,
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(TotemTheme.dimens.space12),
+    ) {
+        TotemInputField(
+            label = stringResource(R.string.settings_origem_qr_label),
+            value = origemQr,
+            placeholder = stringResource(R.string.settings_origem_qr_hint),
+            focused = focusedField == SettingsKeypadField.OrigemQr,
+            onClick = { onOpenKeypad(SettingsKeypadField.OrigemQr) },
+            modifier = Modifier.fillMaxWidth(fraction = 0.6f),
+        )
+        TotemInputField(
+            label = stringResource(R.string.settings_origem_agente_label),
+            value = agente,
+            placeholder = stringResource(R.string.settings_origem_agente_hint),
+            focused = focusedField == SettingsKeypadField.Agente,
+            onClick = { onOpenKeypad(SettingsKeypadField.Agente) },
+            modifier = Modifier.fillMaxWidth(fraction = 0.6f),
+        )
     }
 }
 
@@ -901,6 +959,10 @@ private fun SettingsKeypadSlot(
             stringResource(R.string.settings_porto_search_hint) to state.portoSearchQuery
         SettingsKeypadField.EmbarcacaoSearch ->
             stringResource(R.string.settings_embarcacao_search_hint) to state.embarcacaoSearchQuery
+        SettingsKeypadField.OrigemQr ->
+            stringResource(R.string.settings_origem_qr_label) to state.origemQrInput
+        SettingsKeypadField.Agente ->
+            stringResource(R.string.settings_origem_agente_label) to state.agenteInput
     }
     TotemAlphaKeypad(
         label = label,
@@ -921,6 +983,7 @@ private fun sectionTitleRes(field: SettingsField): Int = when (field) {
     SettingsField.Subdomain -> R.string.settings_section_subdomain
     SettingsField.Porto -> R.string.settings_section_porto
     SettingsField.Embarcacao -> R.string.settings_section_embarcacao
+    SettingsField.OrigemVenda -> R.string.settings_section_origem_venda
     SettingsField.Printer -> R.string.settings_section_printer
     SettingsField.Language -> R.string.settings_section_language
     SettingsField.Pin -> R.string.settings_section_pin
@@ -930,6 +993,7 @@ private fun sectionSubtitleRes(field: SettingsField): Int = when (field) {
     SettingsField.Subdomain -> R.string.settings_subdomain_subtitle
     SettingsField.Porto -> R.string.settings_porto_subtitle
     SettingsField.Embarcacao -> R.string.settings_embarcacao_subtitle
+    SettingsField.OrigemVenda -> R.string.settings_origem_venda_subtitle
     SettingsField.Printer -> R.string.settings_printer_subtitle
     SettingsField.Language -> R.string.settings_language_subtitle
     SettingsField.Pin -> R.string.settings_pin_change_subtitle
@@ -955,6 +1019,7 @@ private fun SettingsHubPreview() {
             onEditSubdomain = {},
             onEditPorto = {},
             onEditEmbarcacao = {},
+            onEditOrigemVenda = {},
             onEditPrinter = {},
             onEditLanguage = {},
             onEditPin = {},

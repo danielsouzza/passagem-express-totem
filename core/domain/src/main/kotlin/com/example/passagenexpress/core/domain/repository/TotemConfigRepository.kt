@@ -21,6 +21,11 @@ interface TotemConfigRepository {
     suspend fun setPrinterPaperWidth(paperWidth: PaperWidth)
     suspend fun setLanguage(language: AppLanguage)
     suspend fun setOperatorPin(pin: String)
+    /**
+     * Origem da venda (equivalente ao `?agente=..&qr=..` do QR da Agência Express no site).
+     * Valores em branco são removidos e não vão no pedido.
+     */
+    suspend fun setOrigemVenda(agente: String, qr: String)
     suspend fun completeSetup()
     suspend fun resetSetup()
 }

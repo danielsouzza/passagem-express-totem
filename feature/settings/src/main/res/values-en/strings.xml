@@ -28,6 +28,13 @@
     <string name="settings_subdomain_subtitle">Subdomain that identifies this totem (optional). Leave blank if the backend is not multi-tenant.</string>
     <string name="settings_subdomain_label">Subdomain (optional)</string>
     <string name="settings_subdomain_hint">company-x</string>
+    <string name="settings_section_origem_venda">Sale origin</string>
+    <string name="settings_origem_venda_subtitle">Identifies where this totem\'s sales come from, like the Agência Express QR does on the website. Both fields are optional and are sent with every order.</string>
+    <string name="settings_origem_qr_label">Totem identifier (qr)</string>
+    <string name="settings_origem_qr_hint">TOTEM-PORTO-MANAUS-01</string>
+    <string name="settings_origem_agente_label">Agent code (optional)</string>
+    <string name="settings_origem_agente_hint">Leave blank if the totem is not an agent</string>
+    <string name="settings_origem_agente_short">agent %1$s</string>
     <string name="settings_porto_subtitle">Choose the port where this totem is installed, or \"None\" to filter trips only by vessel.</string>
     <string name="settings_porto_none">None</string>
     <string name="settings_loading_portos">Loading ports…</string>

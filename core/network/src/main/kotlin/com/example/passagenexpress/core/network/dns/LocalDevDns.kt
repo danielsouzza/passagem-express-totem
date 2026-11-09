@@ -10,9 +10,15 @@ import okhttp3.Dns
  * nem consegue abrir a conexão. Mantém o Host da URL (`techrios.localhost`) intacto, então o
  * Traefik ainda roteia certo pelo header Host; só troca o IP usado pro socket.
  */
-class LocalDevDns(private val overrides: Map<String, String>) : Dns {
+class LocalDevDns(
+    private val overrides: Map<String, String> = emptyMap(),
+    /** IP usado pra qualquer `localhost`/`*.localhost` sem entrada em [overrides]; null = desliga. */
+    private val localhostIp: String? = null,
+) : Dns {
     override fun lookup(hostname: String): List<InetAddress> {
-        val overrideIp = overrides[hostname] ?: return Dns.SYSTEM.lookup(hostname)
+        val overrideIp = overrides[hostname]
+            ?: localhostIp?.takeIf { hostname == "localhost" || hostname.endsWith(".localhost") }
+            ?: return Dns.SYSTEM.lookup(hostname)
         return listOf(InetAddress.getByName(overrideIp))
     }
 }

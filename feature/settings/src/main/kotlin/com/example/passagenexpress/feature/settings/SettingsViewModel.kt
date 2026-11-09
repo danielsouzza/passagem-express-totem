@@ -51,6 +51,8 @@ class SettingsViewModel @Inject constructor(
                         currentOperatorPin = config.operatorPin,
                         currentEmbarcacaoId = config.embarcacaoId,
                         currentEmbarcacaoNome = config.embarcacaoNome,
+                        currentAgente = config.agente,
+                        currentOrigemQr = config.origemQr,
                     )
                 }
             }
@@ -165,6 +167,27 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    fun onEditOrigemVenda() {
+        _uiState.update {
+            it.copy(
+                editing = SettingsField.OrigemVenda,
+                agenteInput = it.currentAgente,
+                origemQrInput = it.currentOrigemQr,
+                // Fluxo guiado: já abre o teclado no identificador do totem (campo principal).
+                keypadField = SettingsKeypadField.OrigemQr,
+                savedNotice = null,
+            )
+        }
+    }
+
+    fun onSaveOrigemVenda() {
+        val state = _uiState.value
+        viewModelScope.launch {
+            totemConfigRepository.setOrigemVenda(state.agenteInput, state.origemQrInput)
+            _uiState.update { it.copy(editing = null, keypadField = null, savedNotice = SettingsField.OrigemVenda) }
+        }
+    }
+
     fun onEditPrinter() {
         _uiState.update {
             it.copy(
@@ -236,6 +259,13 @@ class SettingsViewModel @Inject constructor(
                     state.copy(portoSearchQuery = state.portoSearchQuery + c)
                 SettingsKeypadField.EmbarcacaoSearch ->
                     state.copy(embarcacaoSearchQuery = state.embarcacaoSearchQuery + c)
+                // Códigos de origem: sem espaço e sempre maiúsculos (ex.: TOTEM-PORTO-MANAUS-01).
+                SettingsKeypadField.Agente ->
+                    if (c == ' ' || state.agenteInput.length >= MAX_ORIGEM_LENGTH) state
+                    else state.copy(agenteInput = state.agenteInput + c.uppercaseChar())
+                SettingsKeypadField.OrigemQr ->
+                    if (c == ' ' || state.origemQrInput.length >= MAX_ORIGEM_LENGTH) state
+                    else state.copy(origemQrInput = state.origemQrInput + c.uppercaseChar())
                 null -> state
             }
         }
@@ -250,6 +280,10 @@ class SettingsViewModel @Inject constructor(
                     state.copy(portoSearchQuery = state.portoSearchQuery.dropLast(1))
                 SettingsKeypadField.EmbarcacaoSearch ->
                     state.copy(embarcacaoSearchQuery = state.embarcacaoSearchQuery.dropLast(1))
+                SettingsKeypadField.Agente ->
+                    state.copy(agenteInput = state.agenteInput.dropLast(1))
+                SettingsKeypadField.OrigemQr ->
+                    state.copy(origemQrInput = state.origemQrInput.dropLast(1))
                 null -> state
             }
         }
@@ -376,5 +410,7 @@ class SettingsViewModel @Inject constructor(
     private companion object {
         // Limite defensivo de dígitos do PIN no campo (o PIN real vem de BuildConfig.SETTINGS_PIN).
         const val MAX_PIN_LENGTH = 12
+        // Limite defensivo dos códigos de agente/origem digitados no teclado on-screen.
+        const val MAX_ORIGEM_LENGTH = 64
     }
 }

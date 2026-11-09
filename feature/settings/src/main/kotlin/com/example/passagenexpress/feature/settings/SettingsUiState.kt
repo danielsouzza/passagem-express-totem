@@ -24,6 +24,8 @@ data class SettingsUiState(
     val currentOperatorPin: String = "",
     val currentEmbarcacaoId: Long? = null,
     val currentEmbarcacaoNome: String = "",
+    val currentAgente: String = "",
+    val currentOrigemQr: String = "",
     // Seção em edição (null = hub). Cada editor tem seu próprio buffer abaixo.
     val editing: SettingsField? = null,
     /** Última seção salva com sucesso — mostra confirmação no hub. */
@@ -47,6 +49,9 @@ data class SettingsUiState(
     val printerTest: PrinterTestState = PrinterTestState.Idle,
     // Editor de idioma.
     val languageDraft: AppLanguage = AppLanguage.PtBr,
+    // Editor de origem da venda (agente + identificador do totem).
+    val agenteInput: String = "",
+    val origemQrInput: String = "",
     // Editor de PIN (novo PIN sendo digitado).
     val pinDraft: String = "",
     /** Campo cujo teclado on-screen está aberto (totem não usa IME nativo). */
@@ -96,10 +101,10 @@ data class SettingsUiState(
 }
 
 /** Seções editáveis nas configurações. */
-enum class SettingsField { Subdomain, Porto, Embarcacao, Printer, Language, Pin }
+enum class SettingsField { Subdomain, Porto, Embarcacao, OrigemVenda, Printer, Language, Pin }
 
 /** Campos de texto que recebem entrada pelo teclado on-screen do totem. */
-enum class SettingsKeypadField { Subdomain, PortoSearch, EmbarcacaoSearch }
+enum class SettingsKeypadField { Subdomain, PortoSearch, EmbarcacaoSearch, Agente, OrigemQr }
 
 sealed interface PrinterTestState {
     data object Idle : PrinterTestState

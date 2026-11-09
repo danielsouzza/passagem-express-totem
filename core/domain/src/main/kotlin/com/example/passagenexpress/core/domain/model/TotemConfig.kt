@@ -21,6 +21,16 @@ data class TotemConfig(
     val embarcacaoNome: String = "",
     /** `is_super` de `api/empresa/tema` — empresa/agência "super" usa meios de pagamento próprios. */
     val isSuper: Boolean = false,
+    /**
+     * Código do agente que fica com a venda (`agente` no corpo do pedido). Vazio = totem não é
+     * tratado como agente e o campo não é enviado. Equivale ao `?agente=` do QR no site.
+     */
+    val agente: String = "",
+    /**
+     * Identificador fixo deste totem como origem da venda (`qr` no corpo do pedido), ex.:
+     * `TOTEM-PORTO-MANAUS-01`. Vazio = não enviado. Equivale ao `?qr=` do QR no site.
+     */
+    val origemQr: String = "",
 ) {
     companion object {
         /** Número mínimo de dígitos do PIN de acesso às configurações. */

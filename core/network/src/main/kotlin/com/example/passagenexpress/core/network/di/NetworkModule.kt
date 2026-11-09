@@ -47,10 +47,11 @@ object NetworkModule {
             builder.addInterceptor(
                 HttpLoggingInterceptor().apply { level = HttpLoggingInterceptor.Level.BODY }
             )
-            // Dev local via Traefik: `techrios.localhost` resolve pra loopback no PC, mas não no
-            // emulador. `10.0.2.2` é o alias fixo do AVD pro `127.0.0.1` do host. Só ativo em
-            // debug — nunca deve ir pra release.
-            builder.dns(LocalDevDns(mapOf("techrios.localhost" to "10.0.2.2")))
+            // Dev local via Traefik: qualquer `*.localhost` (techrios.localhost, techrios-<branch>
+            // .localhost, …) resolve pra loopback no PC, mas não no emulador. `10.0.2.2` é o alias
+            // fixo do AVD pro `127.0.0.1` do host (que o WSL encaminha pro Docker). Só ativo em
+            // debug — nunca deve ir pra release. Celular físico: trocar pelo IP LAN do PC.
+            builder.dns(LocalDevDns(localhostIp = "10.0.2.2"))
         }
         return builder.build()
     }
